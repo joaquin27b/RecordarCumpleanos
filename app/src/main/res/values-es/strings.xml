@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Recordar Cumpleaños</string>
+
+    <string name="sec_proximos">Próximos cumpleaños</string>
+    <string name="sec_hoy">Hoy</string>
+    <string name="sec_pasados">Sin saludar</string>
+    <string name="grupo_este_anio">Este año</string>
+    <string name="grupo_proximo_anio">Próximo año</string>
+    <string name="sec_personas">Personas</string>
+    <string name="sec_historial">Historial</string>
+
+    <string name="lista_vacia">Todavía no cargaste cumpleaños</string>
+    <string name="hist_vacio">NO HAY SALUDOS HECHOS</string>
+
+    <string name="estado_hoy">Hoy</string>
+    <string name="estado_proximo">Próximo</string>
+    <string name="estado_pasado">Ya pasó</string>
+
+    <string name="cumple_hoy">Cumple HOY</string>
+    <string name="cumple_manana">Cumple mañana</string>
+    <plurals name="cumple_en_dias">
+        <item quantity="one">En %d día</item>
+        <item quantity="other">En %d días</item>
+    </plurals>
+    <plurals name="cumple_hace_dias">
+        <item quantity="one">Hace %d día</item>
+        <item quantity="other">Hace %d días</item>
+    </plurals>
+    <plurals name="edad_cumple">
+        <item quantity="one">cumple %d año</item>
+        <item quantity="other">cumple %d años</item>
+    </plurals>
+
+    <string name="accion_agregar">+ NUEVO CUMPLEAÑOS</string>
+    <string name="accion_saludado">SALUDADO</string>
+    <string name="accion_marcar_saludado">Marcar como YA SALUDÉ</string>
+    <string name="accion_cerrar">Cerrar</string>
+    <string name="accion_guardar">Guardar</string>
+    <string name="accion_cancelar">Cancelar</string>
+
+    <string name="alta_titulo">Nuevo cumpleaños</string>
+    <string name="alta_nombre">Nombre</string>
+    <string name="alta_fecha">Fecha de nacimiento</string>
+    <string name="alta_elegir_fecha">Elegir fecha</string>
+    <string name="alta_sin_anio">No sé el año</string>
+    <string name="alta_sin_anio_desc">Se guardan solo el día y el mes. No se muestra la edad.</string>
+    <string name="alta_preavisos">Avisarme antes</string>
+    <string name="alta_preavisos_desc">El día del cumpleaños avisa siempre</string>
+    <string name="alta_preaviso_dias">%d días</string>
+    <string name="error_nombre_vacio">Escribí un nombre</string>
+    <string name="error_fecha_vacia">Elegí una fecha</string>
+
+    <string name="per_titulo">Persona</string>
+    <string name="per_fecha">Cumpleaños</string>
+    <string name="accion_eliminar">Eliminar persona</string>
+    <string name="per_borrar_titulo">¿Eliminar a %1$s?</string>
+    <string name="per_borrar_cuerpo">Se quitan los avisos pendientes. El historial de saludos se conserva.</string>
+    <string name="error_colision">Esta persona ya tiene otro cumpleaños en esa fecha.</string>
+
+    <string name="hist_titulo">Saludo</string>
+    <string name="hist_cumplio_el">Cumpleaños: %1$s</string>
+    <string name="hist_saludado_el">Saludado: %1$s</string>
+    <string name="hist_anulado">Anulado</string>
+    <string name="accion_anular">Anular saludo</string>
+    <string name="accion_resaludar">Volver a marcar saludado</string>
+    <string name="hist_mes">Mes</string>
+    <string name="hist_anio">Año</string>
+
+    <string name="ch_cumple_nombre">Cumpleaños</string>
+    <string name="ch_cumple_desc">Avisos antes y el día del cumpleaños</string>
+    <string name="ch_resumen_nombre">Resumen mensual</string>
+    <string name="ch_resumen_desc">Un repaso mensual de los cumpleaños del mes</string>
+
+    <string name="notif_cumple_hoy">%1$s cumple HOY</string>
+    <string name="notif_cumple_manana">%1$s cumple MAÑANA, %2$s</string>
+    <string name="notif_cumple_titulo">%1$s cumple el %2$s</string>
+    <string name="notif_resumen_titulo">Cumpleaños de %1$s</string>
+    <plurals name="notif_resumen_cuerpo">
+        <item quantity="one">%d cumpleaños este mes</item>
+        <item quantity="other">%d cumpleaños este mes</item>
+    </plurals>
+    <string name="accion_borrar">Borrar</string>
+    <string name="accion_borrar_historial">Borrar historial</string>
+    <string name="hist_borrar_titulo">¿Borrar todo el historial?</string>
+    <string name="hist_borrar_cuerpo">Se eliminan todos los saludos registrados. Las personas y sus próximos cumpleaños se conservan.</string>
+    <string name="per_borrar_hist">Borrar el historial de esta persona</string>
+    <string name="per_borrar_hist_cuerpo">Se eliminan los saludos registrados de %1$s. La persona y su próximo cumpleaños se conservan.</string>
+    <string name="hist_borrar_elegir">Elegí qué borrar:</string>
+    <string name="hist_borrar_todo">TODO EL HISTORIAL</string>
+    <plurals name="hist_saludos">
+        <item quantity="one">%d saludo</item>
+        <item quantity="other">%d saludos</item>
+    </plurals>
+</resources>

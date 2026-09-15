@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Birthday Reminder</string>
+
+    <string name="sec_proximos">Upcoming birthdays</string>
+    <string name="sec_hoy">Today</string>
+    <string name="sec_pasados">Not greeted yet</string>
+    <string name="grupo_este_anio">This year</string>
+    <string name="grupo_proximo_anio">Next year</string>
+    <string name="sec_personas">People</string>
+    <string name="sec_historial">History</string>
+
+    <string name="lista_vacia">No birthdays yet</string>
+    <string name="hist_vacio">NO GREETINGS YET</string>
+
+    <string name="estado_hoy">Today</string>
+    <string name="estado_proximo">Upcoming</string>
+    <string name="estado_pasado">Already passed</string>
+
+    <string name="cumple_hoy">Birthday is TODAY</string>
+    <string name="cumple_manana">Birthday is tomorrow</string>
+    <plurals name="cumple_en_dias">
+        <item quantity="one">In %d day</item>
+        <item quantity="other">In %d days</item>
+    </plurals>
+    <plurals name="cumple_hace_dias">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+    <plurals name="edad_cumple">
+        <item quantity="one">turns %d</item>
+        <item quantity="other">turns %d</item>
+    </plurals>
+
+    <string name="accion_agregar">+ NEW BIRTHDAY</string>
+    <string name="accion_saludado">GREETED</string>
+    <string name="accion_marcar_saludado">Mark as GREETED</string>
+    <string name="accion_cerrar">Close</string>
+    <string name="accion_guardar">Save</string>
+    <string name="accion_cancelar">Cancel</string>
+
+    <string name="alta_titulo">New birthday</string>
+    <string name="alta_nombre">Name</string>
+    <string name="alta_fecha">Date of birth</string>
+    <string name="alta_elegir_fecha">Pick a date</string>
+    <string name="alta_sin_anio">I don\'t know the year</string>
+    <string name="alta_sin_anio_desc">Only day and month are saved. No age is shown.</string>
+    <string name="alta_preavisos">Remind me before</string>
+    <string name="alta_preavisos_desc">It always alerts on the birthday</string>
+    <string name="alta_preaviso_dias">%d days</string>
+    <string name="error_nombre_vacio">Enter a name</string>
+    <string name="error_fecha_vacia">Pick a date</string>
+
+    <string name="per_titulo">Person</string>
+    <string name="per_fecha">Birthday</string>
+    <string name="accion_eliminar">Delete person</string>
+    <string name="per_borrar_titulo">Delete %1$s?</string>
+    <string name="per_borrar_cuerpo">Pending reminders are removed. The greeting history is kept.</string>
+    <string name="error_colision">Another birthday of this person is already on that date.</string>
+
+    <string name="hist_titulo">Greeting</string>
+    <string name="hist_cumplio_el">Birthday: %1$s</string>
+    <string name="hist_saludado_el">Greeted: %1$s</string>
+    <string name="hist_anulado">Undone</string>
+    <string name="accion_anular">Undo greeting</string>
+    <string name="accion_resaludar">Mark as greeted again</string>
+    <string name="hist_mes">Month</string>
+    <string name="hist_anio">Year</string>
+
+    <string name="ch_cumple_nombre">Birthdays</string>
+    <string name="ch_cumple_desc">Reminders before and on the birthday</string>
+    <string name="ch_resumen_nombre">Monthly summary</string>
+    <string name="ch_resumen_desc">A monthly recap of upcoming birthdays</string>
+
+    <string name="notif_cumple_hoy">%1$s has a birthday TODAY</string>
+    <string name="notif_cumple_manana">%1$s has a birthday TOMORROW, %2$s</string>
+    <string name="notif_cumple_titulo">%1$s has a birthday on %2$s</string>
+    <string name="notif_resumen_titulo">%1$s birthdays</string>
+    <plurals name="notif_resumen_cuerpo">
+        <item quantity="one">%d birthday this month</item>
+        <item quantity="other">%d birthdays this month</item>
+    </plurals>
+    <string name="accion_borrar">Delete</string>
+    <string name="accion_borrar_historial">Delete history</string>
+    <string name="hist_borrar_titulo">Delete the whole history?</string>
+    <string name="hist_borrar_cuerpo">Every recorded greeting is removed. People and their upcoming birthdays are kept.</string>
+    <string name="per_borrar_hist">Delete this person\'s history</string>
+    <string name="per_borrar_hist_cuerpo">Greetings recorded for %1$s are removed. The person and the upcoming birthday are kept.</string>
+    <string name="hist_borrar_elegir">Choose what to delete:</string>
+    <string name="hist_borrar_todo">THE WHOLE HISTORY</string>
+    <plurals name="hist_saludos">
+        <item quantity="one">%d greeting</item>
+        <item quantity="other">%d greetings</item>
+    </plurals>
+</resources>
