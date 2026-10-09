@@ -1,3 +1,10 @@
+import java.util.Properties
+
+val propsFirma = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -21,6 +28,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            // keystore.properties esta en .gitignore: la clave NUNCA al repo.
+            propsFirma.getProperty("storeFile")?.let { storeFile = file(it) }
+            storePassword = propsFirma.getProperty("storePassword")
+            keyAlias = propsFirma.getProperty("keyAlias")
+            keyPassword = propsFirma.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
         debug {
             // IDs de PRUEBA de Google: el unico build que se instala en el telefono.
@@ -32,6 +49,10 @@ android {
             // Un clic propio con estos IDs suspende la cuenta AdMob entera.
             buildConfigField("String", "AD_UNIT_BANNER", "\"ca-app-pub-6760097434219921/3170801198\"")
             manifestPlaceholders["adAppId"] = "ca-app-pub-6760097434219921~8061744806"
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 
