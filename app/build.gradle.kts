@@ -40,6 +40,11 @@ android {
 
     buildTypes {
         debug {
+            // Paquete propio: convive con la de Play en vez de chocar con
+            // INSTALL_FAILED_UPDATE_INCOMPATIBLE (claves de firma distintas).
+            // Ademas run-as solo funciona sobre builds debuggable.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
             // IDs de PRUEBA de Google: el unico build que se instala en el telefono.
             buildConfigField("String", "AD_UNIT_BANNER", "\"ca-app-pub-3940256099942544/9214589741\"")
             manifestPlaceholders["adAppId"] = "ca-app-pub-3940256099942544~3347511713"
