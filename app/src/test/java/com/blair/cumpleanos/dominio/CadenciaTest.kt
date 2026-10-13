@@ -35,6 +35,16 @@ class CadenciaTest {
         assertFalse(Cadencia.avisa(hoy + 7, hoy, null, ""))
     }
 
+    /** CSV que dejaron en la base los testers de la v1: tiene que seguir parseando igual. */
+    @Test fun `csv de la v1 sigue parseando igual`() {
+        assertArrayEquals(intArrayOf(7, 1), Cadencia.preavisosEfectivos("7,1"))
+        assertArrayEquals(intArrayOf(30, 15, 7, 1), Cadencia.preavisosEfectivos("30,15,7,1"))
+        assertTrue(Cadencia.avisa(hoy + 7, hoy, null, "7,1"))
+        assertTrue(Cadencia.avisa(hoy + 1, hoy, null, "7,1"))
+        assertFalse(Cadencia.avisa(hoy + 3, hoy, null, "7,1"))
+        assertFalse(Cadencia.avisa(hoy + 15, hoy, null, "7,1"))
+    }
+
     @Test fun `null cae al default`() =
         assertArrayEquals(Cadencia.POR_DEFECTO, Cadencia.preavisosEfectivos(null))
 

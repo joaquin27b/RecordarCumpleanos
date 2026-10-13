@@ -21,7 +21,9 @@ import org.robolectric.annotation.Config
 private fun d(a: Int, m: Int, dd: Int) = LocalDate.of(a, m, dd).toEpochDay().toInt()
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+// Application pelada: CumpleanosApp.onCreate programa WorkManager, que bajo
+// Robolectric no esta inicializado. Aca solo hace falta un Context para Room.
+@Config(sdk = [34], application = android.app.Application::class)
 class RepositorioTest {
 
     private lateinit var db: BaseDatos

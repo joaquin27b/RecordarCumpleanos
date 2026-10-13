@@ -22,8 +22,8 @@ android {
         applicationId = "com.blair.cumpleanos"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -113,6 +113,10 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.room.testing)
+    // room-testing (MigrationTestHelper) pide serialization 1.8.1 y la app trae
+    // 1.7.3 via lifecycle. En un test instrumentado manda la version del APK de la
+    // app: sin esto, AbstractMethodError al leer 1.json. Solo debug; release no cambia.
+    debugImplementation(libs.kotlinx.serialization.core)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

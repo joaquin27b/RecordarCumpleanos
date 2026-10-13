@@ -51,4 +51,9 @@ data class Cumple(
     /** Marcado por error y dado de baja. Vuelve a pendiente pero sigue en el
      *  HISTORIAL, tachado, en el mes del saludadoDia original. */
     val anulado: Boolean = false,
+    /** Lo que se piensa regalar en ESTA ocurrencia: cada anio se regala otra cosa.
+     *  null = sin regalo anotado (todas las filas que vienen de la v1). */
+    val regaloPlan: String? = null,
+    /** Lo que se regalo de verdad, confirmado al saludar. null = sin confirmar. */
+    val regaloReal: String? = null,
 )

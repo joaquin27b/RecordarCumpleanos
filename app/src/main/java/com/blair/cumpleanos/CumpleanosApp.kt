@@ -3,7 +3,9 @@ package com.blair.cumpleanos
 import android.app.Application
 import android.content.SharedPreferences
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import com.blair.cumpleanos.datos.BaseDatos
+import com.blair.cumpleanos.datos.MIGRACION_1_2
 import com.blair.cumpleanos.notif.Canales
 import com.blair.cumpleanos.notif.TickWorker
 import com.blair.cumpleanos.repo.Repositorio
@@ -25,7 +27,15 @@ class CumpleanosApp : Application() {
     }
 
     val db: BaseDatos by lazy {
-        Room.databaseBuilder(this, BaseDatos::class.java, "cumpleanos.db").build()
+        // El nombre del archivo NO cambia: es la base de los testers.
+        Room.databaseBuilder(this, BaseDatos::class.java, "cumpleanos.db")
+            // TRUNCATE, no WAL: las reglas de backup copian cumpleanos.db y no el
+            // -wal, y un restore perderia lo que no se habia volcado. El primer
+            // arranque con TRUNCATE hace checkpoint del -wal de la v1.
+            .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
+            // Sin fallback destructivo: una actualizacion NUNCA borra datos.
+            .addMigrations(MIGRACION_1_2)
+            .build()
     }
 
     val repo: Repositorio by lazy { Repositorio(db) }
