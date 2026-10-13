@@ -123,11 +123,13 @@ class ListaViewModel(
 
     fun alternarPorAnio(anual: Boolean) { _porAnio.value = anual }
 
-    fun crear(nombre: String, dia: Int, mes: Int, anioNacimiento: Int?, preavisos: String?) =
-        lanzar { repo.crear(nombre, dia, mes, anioNacimiento, preavisos, hoy()) }
+    fun crear(nombre: String, dia: Int, mes: Int, anioNacimiento: Int?, preavisos: String?, regaloPlan: String?) =
+        lanzar { repo.crear(nombre, dia, mes, anioNacimiento, preavisos, hoy(), regaloPlan) }
 
-    fun saludar(personaId: Long, cumpleId: Long) =
-        lanzar { repo.saludar(personaId, cumpleId, hoy()) }
+    fun saludar(personaId: Long, cumpleId: Long, regaloReal: String?) =
+        lanzar { repo.saludar(personaId, cumpleId, hoy(), regaloReal) }
+
+    fun anotarRegaloReal(cumpleId: Long, texto: String?) = lanzar { repo.anotarRegaloReal(cumpleId, texto) }
 
     fun anularSaludo(cumpleId: Long) = lanzar { repo.anularSaludo(cumpleId) }
 
@@ -142,10 +144,14 @@ class ListaViewModel(
     private val _colision = MutableStateFlow(false)
     val colision: StateFlow<Boolean> = _colision
 
-    fun editarPersona(persona: Persona, nuevoDia: Int?, nuevoMes: Int?, alCerrar: () -> Unit) {
+    fun editarPersona(persona: Persona, nuevoDia: Int?, nuevoMes: Int?, regaloPlan: String?, alCerrar: () -> Unit) {
         viewModelScope.launch {
             when (repo.editarPersona(persona, nuevoDia, nuevoMes, hoy())) {
-                Movida.Ok -> alCerrar()
+                Movida.Ok -> {
+                    // Despues de mover: el plan va a la ocurrencia ya en su fecha nueva.
+                    repo.anotarRegaloPlan(persona.id, regaloPlan)
+                    alCerrar()
+                }
                 Movida.Colision -> _colision.value = true
             }
         }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -42,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -111,6 +113,7 @@ fun ListaPantalla(
     mes: YearMonth,
     porAnio: Boolean,
     onSaludar: (FilaCumple) -> Unit,
+    onEditarRegalo: (CumpleUi) -> Unit,
     onEditarPersona: (Long) -> Unit,
     onEliminarPersona: (Long) -> Unit,
     onBorrarHistorial: () -> Unit,
@@ -192,7 +195,7 @@ fun ListaPantalla(
                 is Item.Cumple -> TarjetaCumple(item.f, loc, onSaludar, onEditarPersona, anim)
                 is Item.Personas -> TarjetaPersonas(item.lista, loc, onEditarPersona, { aBorrar = it }, anim)
                 Item.ControlesHistorial -> ControlesHistorial(mes, porAnio, loc, onMesAnterior, onMesSiguiente, onAlternarPorAnio, anim)
-                is Item.Saludo -> TarjetaSaludo(item.c, loc, anim)
+                is Item.Saludo -> TarjetaSaludo(item.c, loc, { onEditarRegalo(item.c) }, anim)
                 is Item.Vacio -> Text(
                     stringResource(item.texto),
                     color = TextoSecundario,
@@ -384,6 +387,7 @@ private fun TarjetaCumple(
                 )
                 val detalle = listOfNotNull(fechaLarga(f.c.fechaDia, loc), textoEdad(res, f.edad)).joinToString("  ·  ")
                 Text(detalle, color = TextoSecundario, style = MaterialTheme.typography.bodyMedium)
+                f.c.regaloPlan?.let { LineaRegalo(stringResource(R.string.regalo_plan, it)) }
                 Spacer(Modifier.height(2.dp))
                 PildoraDeEstado(f)
             }
@@ -484,9 +488,9 @@ private fun ControlesHistorial(
 }
 
 @Composable
-private fun TarjetaSaludo(c: CumpleUi, loc: Locale, modifier: Modifier) {
+private fun TarjetaSaludo(c: CumpleUi, loc: Locale, onEditarRegalo: () -> Unit, modifier: Modifier) {
     val res = LocalContext.current.resources
-    Tarjeta(modifier) {
+    Tarjeta(modifier, onClick = onEditarRegalo) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             InsigniaFecha(diaDelMes(c.fechaDia), mesCorto(c.fechaDia, loc), if (c.anulado) RojoCta else CianNeon)
             Spacer(Modifier.width(14.dp))
@@ -514,6 +518,12 @@ private fun TarjetaSaludo(c: CumpleUi, loc: Locale, modifier: Modifier) {
                 textoEdad(res, edad(c.fechaDia, c.anioNacimiento))?.let {
                     Text(it, color = TextoSecundario, style = MaterialTheme.typography.bodySmall)
                 }
+                // NULL de las filas de la v1: se dice, no se deja un hueco.
+                LineaRegalo(
+                    c.regaloReal?.let { stringResource(R.string.regalo_real, it) }
+                        ?: stringResource(R.string.regalo_sin_anotar),
+                    apagada = c.regaloReal == null,
+                )
             }
             if (c.anulado) {
                 Box(Modifier.padding(start = 8.dp)) {
@@ -521,5 +531,26 @@ private fun TarjetaSaludo(c: CumpleUi, loc: Locale, modifier: Modifier) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LineaRegalo(texto: String, apagada: Boolean = false) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            painterResource(R.drawable.ic_regalo),
+            contentDescription = null,
+            tint = if (apagada) TextoSecundario else Dorado,
+            modifier = Modifier.size(15.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            texto,
+            color = if (apagada) TextoSecundario else BlancoEscena,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (apagada) FontWeight.Normal else FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

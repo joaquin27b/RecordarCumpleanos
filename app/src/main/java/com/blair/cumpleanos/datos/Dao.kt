@@ -22,6 +22,9 @@ data class CumpleUi(
     val saludadoDia: Int?,
     val anulado: Boolean,
     val avisoUltimoDia: Int?,
+    /** null = sin regalo anotado (todas las filas de la v1). */
+    val regaloPlan: String?,
+    val regaloReal: String?,
 )
 
 @Dao
@@ -62,7 +65,7 @@ interface CumpleDao {
     /** PROXIMOS: todo lo no saludado de personas activas. */
     @Query(
         """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
-                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia
+                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal
            FROM cumple c JOIN persona p ON p.id = c.personaId
            WHERE c.saludado = 0 AND p.activo = 1
            ORDER BY c.fechaDia"""
@@ -72,7 +75,7 @@ interface CumpleDao {
     /** Version suspend de abiertos(), para el worker. */
     @Query(
         """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
-                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia
+                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal
            FROM cumple c JOIN persona p ON p.id = c.personaId
            WHERE c.saludado = 0 AND p.activo = 1
            ORDER BY c.fechaDia"""
@@ -82,7 +85,7 @@ interface CumpleDao {
     /** HISTORIAL: saludados en un rango, por fecha de saludo. Incluye personas eliminadas. */
     @Query(
         """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
-                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia
+                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal
            FROM cumple c JOIN persona p ON p.id = c.personaId
            WHERE c.saludadoDia IS NOT NULL AND c.saludadoDia BETWEEN :desde AND :hasta
            ORDER BY c.saludadoDia DESC"""
@@ -118,6 +121,12 @@ interface CumpleDao {
 
     @Query("UPDATE cumple SET fechaDia = :dia, avisoUltimoDia = NULL WHERE id = :id")
     suspend fun editarFechaCumple(id: Long, dia: Int)
+
+    @Query("UPDATE cumple SET regaloPlan = :texto WHERE id = :id")
+    suspend fun anotarRegaloPlan(id: Long, texto: String?)
+
+    @Query("UPDATE cumple SET regaloReal = :texto WHERE id = :id")
+    suspend fun anotarRegaloReal(id: Long, texto: String?)
 
     @Query("UPDATE cumple SET avisoUltimoDia = :dia WHERE id = :id")
     suspend fun marcarAviso(id: Long, dia: Int)

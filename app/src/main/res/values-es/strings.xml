@@ -111,4 +111,14 @@
     <string name="error_anio_futuro">El año no puede ser futuro</string>
     <string name="error_anio_invalido">Escribí un año de 4 cifras</string>
     <string name="error_anio_bisiesto">Ese año no tuvo 29 de febrero</string>
+    <string name="regalo_plan_etiqueta">¿Qué le vas a regalar? (opcional)</string>
+    <string name="regalo_real_etiqueta">¿Qué le regalaste?</string>
+    <string name="regalo_sin_anotar">Sin regalo anotado</string>
+    <string name="regalo_plan">Regalo pensado: %1$s</string>
+    <string name="regalo_real">Regalo: %1$s</string>
+    <string name="saludo_titulo">Saludar a %1$s</string>
+    <string name="saludo_cuerpo">Confirmá el regalo o cambialo. Si no hubo regalo, dejalo vacío.</string>
+    <string name="accion_guardar_saludo">GUARDAR SALUDO</string>
+    <string name="regalo_editar_titulo">Regalo para %1$s</string>
+    <string name="regalo_plan_era">Lo pensado era: %1$s</string>
 </resources>

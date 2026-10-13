@@ -50,7 +50,7 @@ import java.time.LocalDate
  */
 @Composable
 fun AltaPantalla(
-    onGuardar: (nombre: String, dia: Int, mes: Int, anioNacimiento: Int?, preavisos: String?) -> Unit,
+    onGuardar: (nombre: String, dia: Int, mes: Int, anioNacimiento: Int?, preavisos: String?, regaloPlan: String?) -> Unit,
     onCancelar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -63,6 +63,7 @@ fun AltaPantalla(
     var anioTexto by rememberSaveable { mutableStateOf("") }
     var sinAnio by rememberSaveable { mutableStateOf(false) }
     var preavisos by rememberSaveable { mutableStateOf(Cadencia.POR_DEFECTO.toList()) }
+    var regaloPlan by rememberSaveable { mutableStateOf("") }
     var intento by rememberSaveable { mutableStateOf(false) }
 
     val validacion = validarAnio(if (sinAnio) "" else anioTexto, dia, mes, hoy)
@@ -105,6 +106,8 @@ fun AltaPantalla(
             mostrarError = intento || anioTexto.length == 4,
         )
 
+        CampoRegalo(regaloPlan, { regaloPlan = it }, stringResource(R.string.regalo_plan_etiqueta))
+
         Etiqueta(stringResource(R.string.alta_preavisos))
         Text(stringResource(R.string.alta_preavisos_desc), color = TextoSecundario, style = MaterialTheme.typography.bodySmall)
         ChipsPreaviso(preavisos.toSet()) { preavisos = it.toList() }
@@ -127,7 +130,7 @@ fun AltaPantalla(
                         AnioNacimiento.Invalido, AnioNacimiento.Futuro, AnioNacimiento.SinBisiesto -> return@BotonPrincipal
                     }
                     if (nombre.isBlank()) return@BotonPrincipal
-                    onGuardar(nombre.trim(), dia, mes, anio, preavisos.sortedDescending().joinToString(","))
+                    onGuardar(nombre.trim(), dia, mes, anio, preavisos.sortedDescending().joinToString(","), regaloPlan)
                 },
                 modifier = Modifier.weight(1f),
             )

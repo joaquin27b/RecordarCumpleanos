@@ -111,4 +111,14 @@
     <string name="error_anio_futuro">The year can\'t be in the future</string>
     <string name="error_anio_invalido">Enter a 4-digit year</string>
     <string name="error_anio_bisiesto">That year had no February 29</string>
+    <string name="regalo_plan_etiqueta">What will you give? (optional)</string>
+    <string name="regalo_real_etiqueta">What did you give?</string>
+    <string name="regalo_sin_anotar">No gift noted</string>
+    <string name="regalo_plan">Gift idea: %1$s</string>
+    <string name="regalo_real">Gift: %1$s</string>
+    <string name="saludo_titulo">Greet %1$s</string>
+    <string name="saludo_cuerpo">Confirm the gift or change it. If there was no gift, leave it empty.</string>
+    <string name="accion_guardar_saludo">SAVE GREETING</string>
+    <string name="regalo_editar_titulo">Gift for %1$s</string>
+    <string name="regalo_plan_era">The idea was: %1$s</string>
 </resources>

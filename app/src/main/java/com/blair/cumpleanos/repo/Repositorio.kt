@@ -27,7 +27,15 @@ class Repositorio(private val db: BaseDatos) {
      * El anio de nacimiento NO siembra la fecha, solo la edad: sembrar desde
      * 1990 generaria 36 ocurrencias pendientes.
      */
-    suspend fun crear(nombre: String, dia: Int, mes: Int, anioNacimiento: Int?, preavisos: String?, hoy: Int): Long =
+    suspend fun crear(
+        nombre: String,
+        dia: Int,
+        mes: Int,
+        anioNacimiento: Int?,
+        preavisos: String?,
+        hoy: Int,
+        regaloPlan: String? = null,
+    ): Long =
         db.withTransaction {
             val primera = proximaOcurrencia(dia, mes, hoy)
             val id = personas.insertar(
@@ -39,7 +47,7 @@ class Repositorio(private val db: BaseDatos) {
                     preavisos = preavisos,
                 )
             )
-            cumples.insertar(Cumple(personaId = id, fechaDia = primera))
+            cumples.insertar(Cumple(personaId = id, fechaDia = primera, regaloPlan = regalo(regaloPlan)))
             id
         }
 
@@ -61,13 +69,30 @@ class Repositorio(private val db: BaseDatos) {
         }
     }
 
-    /** Saludar MARCA, nunca borra: el historial es perpetuo. */
-    suspend fun saludar(personaId: Long, cumpleId: Long, hoy: Int) {
+    /**
+     * Saludar MARCA, nunca borra: el historial es perpetuo.
+     *
+     * El regalo real queda en ESTA ocurrencia; la del año siguiente nace sin
+     * plan, porque cada año se regala otra cosa.
+     */
+    suspend fun saludar(personaId: Long, cumpleId: Long, hoy: Int, regaloReal: String? = null) {
         db.withTransaction {
             cumples.marcarSaludado(cumpleId, hoy)
+            cumples.anotarRegaloReal(cumpleId, regalo(regaloReal))
             val p = personas.porId(personaId) ?: return@withTransaction
             personas.actualizar(p.copy(ultimoSaludoDia = hoy))
             asegurarCobertura(personaId, hoy)
+        }
+    }
+
+    /** Editable en cualquier momento, desde el historial. */
+    suspend fun anotarRegaloReal(cumpleId: Long, texto: String?) = cumples.anotarRegaloReal(cumpleId, regalo(texto))
+
+    /** El regalo pensado va en la ocurrencia pendiente mas proxima de la persona. */
+    suspend fun anotarRegaloPlan(personaId: Long, texto: String?) {
+        db.withTransaction {
+            val abierta = cumples.abiertosDe(personaId).minByOrNull { it.fechaDia } ?: return@withTransaction
+            cumples.anotarRegaloPlan(abierta.id, regalo(texto))
         }
     }
 
@@ -136,4 +161,7 @@ class Repositorio(private val db: BaseDatos) {
 
     /** Dia del mes del ancla, para precargar el DatePicker. */
     fun diaDe(epochDay: Int): Int = diaDelMes(epochDay)
+
+    /** Vacio y solo espacios se guardan como NULL: "sin regalo anotado", no "" roto. */
+    private fun regalo(texto: String?): String? = texto?.trim()?.takeIf { it.isNotEmpty() }
 }

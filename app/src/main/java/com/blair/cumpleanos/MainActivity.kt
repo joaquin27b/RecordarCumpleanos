@@ -48,6 +48,9 @@ import com.blair.cumpleanos.ui.BotonPrincipal
 import com.blair.cumpleanos.ui.Festejo
 import com.blair.cumpleanos.ui.FranjaBanner
 import com.blair.cumpleanos.ui.HojaPersona
+import com.blair.cumpleanos.ui.HojaRegalo
+import com.blair.cumpleanos.ui.FilaCumple
+import com.blair.cumpleanos.datos.CumpleUi
 import com.blair.cumpleanos.ui.ListaPantalla
 import com.blair.cumpleanos.ui.ListaViewModel
 import com.blair.cumpleanos.ui.SplashPantalla
@@ -120,8 +123,8 @@ class MainActivity : ComponentActivity() {
                                 vm = vm,
                                 enAlta = enAlta,
                                 onAlta = { enAlta = it },
-                                onSaludar = { personaId, cumpleId ->
-                                    vm.saludar(personaId, cumpleId)
+                                onSaludar = { personaId, cumpleId, regalo ->
+                                    vm.saludar(personaId, cumpleId, regalo)
                                     haptico.performHapticFeedback(HapticFeedbackType.LongPress)
                                     festejo++
                                 },
@@ -139,7 +142,7 @@ class MainActivity : ComponentActivity() {
         vm: ListaViewModel,
         enAlta: Boolean,
         onAlta: (Boolean) -> Unit,
-        onSaludar: (personaId: Long, cumpleId: Long) -> Unit,
+        onSaludar: (personaId: Long, cumpleId: Long, regaloReal: String?) -> Unit,
     ) {
         val pasados by vm.pasados.collectAsStateWithLifecycle()
         val proximos by vm.proximos.collectAsStateWithLifecycle()
@@ -150,6 +153,11 @@ class MainActivity : ComponentActivity() {
         val personaAbierta by vm.personaAbierta.collectAsStateWithLifecycle()
         val colision by vm.colision.collectAsStateWithLifecycle()
         val conHistorial by vm.conHistorial.collectAsStateWithLifecycle()
+        val pendientesDePersona by vm.pendientesDePersona.collectAsStateWithLifecycle()
+        // Al tocar YA SALUDÉ se abre primero la hoja del regalo; el saludo se
+        // guarda recien al confirmar.
+        var aSaludar by remember { mutableStateOf<FilaCumple?>(null) }
+        var regaloHistorial by remember { mutableStateOf<CumpleUi?>(null) }
 
         Scaffold(
             // Transparente: el Escenario de atras es el fondo.
@@ -169,8 +177,8 @@ class MainActivity : ComponentActivity() {
         ) { innerPadding ->
             if (enAlta) {
                 AltaPantalla(
-                    onGuardar = { nombre, dia, mes, anio, preav ->
-                        vm.crear(nombre, dia, mes, anio, preav)
+                    onGuardar = { nombre, dia, mes, anio, preav, regalo ->
+                        vm.crear(nombre, dia, mes, anio, preav, regalo)
                         onAlta(false)
                     },
                     onCancelar = { onAlta(false) },
@@ -184,7 +192,8 @@ class MainActivity : ComponentActivity() {
                     historial = historial,
                     mes = mes,
                     porAnio = porAnio,
-                    onSaludar = { f -> onSaludar(f.c.personaId, f.c.id) },
+                    onSaludar = { f -> aSaludar = f },
+                    onEditarRegalo = { c -> regaloHistorial = c },
                     onEditarPersona = { id -> vm.abrirPersona(id) },
                     onEliminarPersona = { id -> vm.eliminarPersona(id) },
                     onBorrarHistorial = { vm.borrarHistorial() },
@@ -201,13 +210,44 @@ class MainActivity : ComponentActivity() {
         personaAbierta?.let { p ->
             HojaPersona(
                 persona = p,
+                regaloPlan = pendientesDePersona.minByOrNull { it.fechaDia }?.regaloPlan,
                 colision = colision,
-                onGuardar = { editada, dia, mes ->
-                    vm.editarPersona(editada, dia, mes) { vm.abrirPersona(null) }
+                onGuardar = { editada, dia, mes, regalo ->
+                    vm.editarPersona(editada, dia, mes, regalo) { vm.abrirPersona(null) }
                 },
                 onEliminar = { vm.eliminarPersona(p.id); vm.abrirPersona(null) },
                 onBorrarHistorial = { vm.borrarHistorialDe(p.id) },
                 onCerrar = { vm.abrirPersona(null) },
+            )
+        }
+
+        aSaludar?.let { f ->
+            HojaRegalo(
+                titulo = stringResource(R.string.saludo_titulo, f.c.nombre),
+                cuerpo = stringResource(R.string.saludo_cuerpo),
+                etiqueta = stringResource(R.string.regalo_real_etiqueta),
+                inicial = f.c.regaloPlan,
+                textoBoton = stringResource(R.string.accion_guardar_saludo),
+                onGuardar = { regalo ->
+                    aSaludar = null
+                    onSaludar(f.c.personaId, f.c.id, regalo)
+                },
+                onCerrar = { aSaludar = null },
+            )
+        }
+
+        regaloHistorial?.let { c ->
+            HojaRegalo(
+                titulo = stringResource(R.string.regalo_editar_titulo, c.nombre),
+                cuerpo = c.regaloPlan?.let { stringResource(R.string.regalo_plan_era, it) },
+                etiqueta = stringResource(R.string.regalo_real_etiqueta),
+                inicial = c.regaloReal,
+                textoBoton = stringResource(R.string.accion_guardar),
+                onGuardar = { regalo ->
+                    vm.anotarRegaloReal(c.id, regalo)
+                    regaloHistorial = null
+                },
+                onCerrar = { regaloHistorial = null },
             )
         }
     }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Caja de regalo con moño. Vector propio: material-icons-extended no se usa. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M3,9h18v4H3z M4.5,13.5h15V21a1,1 0 0 1 -1,1h-13a1,1 0 0 1 -1,-1z" />
+    <path
+        android:fillColor="#FF000000"
+        android:fillAlpha="0.35"
+        android:pathData="M11,9h2v13h-2z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,8.6C10.4,5.4 6.6,3.6 6.2,6.2 5.9,8 9,8.6 12,8.6z M12,8.6C13.6,5.4 17.4,3.6 17.8,6.2 18.1,8 15,8.6 12,8.6z" />
+</vector>

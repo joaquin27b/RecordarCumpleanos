@@ -60,8 +60,10 @@ import java.time.LocalDate
 @Composable
 fun HojaPersona(
     persona: Persona,
+    /** Plan de la ocurrencia pendiente mas proxima. null = sin regalo anotado. */
+    regaloPlan: String?,
     colision: Boolean,
-    onGuardar: (Persona, Int, Int) -> Unit,
+    onGuardar: (persona: Persona, dia: Int, mes: Int, regaloPlan: String?) -> Unit,
     onEliminar: () -> Unit,
     onBorrarHistorial: () -> Unit,
     onCerrar: () -> Unit,
@@ -75,6 +77,7 @@ fun HojaPersona(
     var preavisos by rememberSaveable(persona.id) {
         mutableStateOf(Cadencia.preavisosEfectivos(persona.preavisos).toList())
     }
+    var regalo by rememberSaveable(persona.id, regaloPlan) { mutableStateOf(regaloPlan ?: "") }
     var intento by remember { mutableStateOf(false) }
     var confirmarBorrar by remember { mutableStateOf(false) }
     var confirmarHist by remember { mutableStateOf(false) }
@@ -132,6 +135,8 @@ fun HojaPersona(
                     mostrarError = true,
                 )
 
+                CampoRegalo(regalo, { regalo = it }, stringResource(R.string.regalo_plan_etiqueta))
+
                 Etiqueta(stringResource(R.string.alta_preavisos))
                 ChipsPreaviso(preavisos.toSet()) { preavisos = it.toList() }
 
@@ -153,6 +158,7 @@ fun HojaPersona(
                             ),
                             dia,
                             mes,
+                            regalo,
                         )
                     },
                     modifier = Modifier

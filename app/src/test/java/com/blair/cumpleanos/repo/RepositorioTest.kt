@@ -156,4 +156,41 @@ class RepositorioTest {
         val f = db.cumpleDao().abiertosDe(id)[0].fechaDia
         assertEquals(2027, anioDe(f))
     }
+
+    @Test fun `el regalo pensado va en la ocurrencia, vacio queda en null`() = runTest {
+        val id = repo.crear("Ana", 25, 12, 1990, null, hoy, regaloPlan = "  Un libro ")
+        assertEquals("Un libro", db.cumpleDao().abiertosDe(id)[0].regaloPlan)
+        val id2 = repo.crear("Beto", 26, 12, 1990, null, hoy, regaloPlan = "   ")
+        assertNull(db.cumpleDao().abiertosDe(id2)[0].regaloPlan)
+    }
+
+    @Test fun `saludar guarda el regalo real y el anio siguiente nace sin plan`() = runTest {
+        val id = repo.crear("Hoy", 14, 9, 2000, null, hoy, regaloPlan = "Perfume")
+        val c = db.cumpleDao().abiertosDe(id)[0]
+        repo.saludar(id, c.id, hoy, regaloReal = "Perfume y flores")
+
+        val saludado = db.cumpleDao().porId(c.id)!!
+        assertEquals("Perfume", saludado.regaloPlan)
+        assertEquals("Perfume y flores", saludado.regaloReal)
+        val siguiente = db.cumpleDao().abiertosDe(id)[0]
+        assertNull(siguiente.regaloPlan)
+        assertNull(siguiente.regaloReal)
+    }
+
+    @Test fun `el regalo real se edita despues desde el historial`() = runTest {
+        val id = repo.crear("Hoy", 14, 9, 2000, null, hoy)
+        val c = db.cumpleDao().abiertosDe(id)[0]
+        repo.saludar(id, c.id, hoy, regaloReal = null)
+        assertNull(db.cumpleDao().porId(c.id)!!.regaloReal)
+        repo.anotarRegaloReal(c.id, "Entradas al recital")
+        assertEquals("Entradas al recital", db.cumpleDao().porId(c.id)!!.regaloReal)
+        repo.anotarRegaloReal(c.id, "")
+        assertNull(db.cumpleDao().porId(c.id)!!.regaloReal)
+    }
+
+    @Test fun `el plan editado va a la ocurrencia pendiente mas proxima`() = runTest {
+        val id = repo.crear("Ana", 25, 12, 1990, null, hoy)
+        repo.anotarRegaloPlan(id, "Taza")
+        assertEquals("Taza", db.cumpleDao().abiertosDe(id)[0].regaloPlan)
+    }
 }
