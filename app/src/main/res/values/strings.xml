@@ -32,7 +32,7 @@
         <item quantity="other">turns %d</item>
     </plurals>
 
-    <string name="accion_agregar">+ NEW BIRTHDAY</string>
+    <string name="accion_agregar">NEW BIRTHDAY</string>
     <string name="accion_saludado">GREETED</string>
     <string name="accion_marcar_saludado">Mark as GREETED</string>
     <string name="accion_cerrar">Close</string>
@@ -92,4 +92,17 @@
         <item quantity="one">%d greeting</item>
         <item quantity="other">%d greetings</item>
     </plurals>
+    <string name="accion_ya_salude">GREETED IT</string>
+    <plurals name="pildora_faltan">
+        <item quantity="one">%d day to go</item>
+        <item quantity="other">%d days to go</item>
+    </plurals>
+    <plurals name="pildora_sin_saludar">
+        <item quantity="one">Not greeted · %d day ago</item>
+        <item quantity="other">Not greeted · %d days ago</item>
+    </plurals>
+    <string name="festejo_saludado">Greeted!</string>
+    <string name="vacio_cuerpo">Add the first one and I\'ll let you know when the day comes.</string>
+    <string name="desc_anterior">Previous</string>
+    <string name="desc_siguiente">Next</string>
 </resources>

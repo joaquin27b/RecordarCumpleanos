@@ -48,3 +48,9 @@ fun etiquetaEstado(res: Resources, estado: Estado): String = when (estado) {
     Estado.PROXIMO -> res.getString(R.string.estado_proximo)
     Estado.PASADO, Estado.OLVIDADO -> res.getString(R.string.estado_pasado)
 }
+
+/** "OCT" / "OCT": mes corto en mayusculas, sin el punto de la abreviatura. */
+fun mesCorto(epochDay: Int, locale: Locale): String =
+    fmt("MMM", locale).format(LocalDate.ofEpochDay(epochDay.toLong()))
+        .replace(".", "")
+        .uppercase(locale)

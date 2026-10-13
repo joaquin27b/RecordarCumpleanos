@@ -32,7 +32,7 @@
         <item quantity="other">cumple %d años</item>
     </plurals>
 
-    <string name="accion_agregar">+ NUEVO CUMPLEAÑOS</string>
+    <string name="accion_agregar">NUEVO CUMPLEAÑOS</string>
     <string name="accion_saludado">SALUDADO</string>
     <string name="accion_marcar_saludado">Marcar como YA SALUDÉ</string>
     <string name="accion_cerrar">Cerrar</string>
@@ -92,4 +92,17 @@
         <item quantity="one">%d saludo</item>
         <item quantity="other">%d saludos</item>
     </plurals>
+    <string name="accion_ya_salude">YA SALUDÉ</string>
+    <plurals name="pildora_faltan">
+        <item quantity="one">Falta %d día</item>
+        <item quantity="other">Faltan %d días</item>
+    </plurals>
+    <plurals name="pildora_sin_saludar">
+        <item quantity="one">Sin saludar · hace %d día</item>
+        <item quantity="other">Sin saludar · hace %d días</item>
+    </plurals>
+    <string name="festejo_saludado">¡Saludado!</string>
+    <string name="vacio_cuerpo">Cargá el primero y te aviso cuando llegue el día.</string>
+    <string name="desc_anterior">Anterior</string>
+    <string name="desc_siguiente">Siguiente</string>
 </resources>
