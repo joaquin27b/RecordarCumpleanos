@@ -44,8 +44,9 @@ fun TituloCromado(
     brillo: () -> Float = { -1f },
     resplandor: Boolean = true,
     extrusion: Int = 5,
+    alineacion: Alignment.Horizontal = Alignment.CenterHorizontally,
 ) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier, horizontalAlignment = alineacion) {
         texto.split(' ').filter { it.isNotBlank() }.forEach { linea ->
             LineaCromada(linea, tamano, brillo, resplandor, extrusion)
         }

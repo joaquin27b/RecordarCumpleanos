@@ -6,24 +6,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
+import kotlin.math.cos
+import kotlin.math.sin
+
+/** Puntas de cada estrella de destello. */
+const val PUNTAS_DESTELLO = 9
+
+/** Radio interno relativo: bajo, rayos finos y filosos como un destello de luz. */
+private const val INTERNO = 0.40f
 
 /**
- * Estrella de 4 puntas: rombo alargado con los lados curvados hacia adentro.
+ * Estrella de 9 puntas centrada en el origen, una punta hacia arriba.
  *
- * Centrada en el origen, alto 2*r y ancho 2*r*0.72: alargada en vertical como
- * los destellos del poster. Se arma una vez y se reusa trasladandola.
+ * Se arma una vez y se reusa trasladandola.
  */
-fun trazoDestello(r: Float): Path {
-    val a = r * 0.72f
-    val k = r * 0.13f
-    return Path().apply {
-        moveTo(0f, -r)
-        quadraticTo(k, -k, a, 0f)
-        quadraticTo(k, k, 0f, r)
-        quadraticTo(-k, k, -a, 0f)
-        quadraticTo(-k, -k, 0f, -r)
-        close()
+fun trazoDestello(r: Float): Path = Path().apply {
+    val pasos = PUNTAS_DESTELLO * 2
+    for (k in 0 until pasos) {
+        val radio = if (k % 2 == 0) r else r * INTERNO
+        val a = -Math.PI / 2 + k * Math.PI / PUNTAS_DESTELLO
+        val x = (cos(a) * radio).toFloat()
+        val y = (sin(a) * radio).toFloat()
+        if (k == 0) moveTo(x, y) else lineTo(x, y)
     }
+    close()
 }
 
 /** Destello con halo opcional. El halo es un radial: brillo sin blur, valido en API 26. */

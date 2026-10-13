@@ -62,6 +62,7 @@ import com.blair.cumpleanos.dominio.tiempo
 import com.blair.cumpleanos.dominio.diaDelMes
 import com.blair.cumpleanos.dominio.edad
 import com.blair.cumpleanos.ui.escena.TituloCromado
+import com.blair.cumpleanos.ui.escena.Velita
 import com.blair.cumpleanos.ui.escena.VelitaEnEscenario
 import com.blair.cumpleanos.ui.theme.BlancoEscena
 import com.blair.cumpleanos.ui.theme.CianNeon
@@ -314,17 +315,26 @@ fun ListaPantalla(
 fun esVacio(pasados: List<FilaCumple>, proximos: List<FilaLista>, personas: List<Persona>): Boolean =
     personas.isEmpty() && pasados.isEmpty() && proximos.isEmpty()
 
+/** Cabecera: Velita al lado del titulo de marca. La mascota acompaña toda la app. */
 @Composable
 private fun Cabecera(modifier: Modifier) {
-    TituloCromado(
-        texto = stringResource(R.string.app_name).uppercase(locale()).replace(' ', ' '),
-        tamano = 24.sp,
-        resplandor = false,
-        extrusion = 3,
-        modifier = modifier
+    Row(
+        modifier
             .fillMaxWidth()
-            .padding(top = 12.dp, bottom = 2.dp),
-    )
+            .padding(top = 8.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Velita(Modifier.width(62.dp))
+        Spacer(Modifier.width(12.dp))
+        TituloCromado(
+            texto = stringResource(R.string.marca),
+            tamano = 27.sp,
+            resplandor = false,
+            extrusion = 3,
+            alineacion = Alignment.Start,
+        )
+    }
 }
 
 @Composable
@@ -340,7 +350,7 @@ private fun EstadoVacio(modifier: Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             TituloCromado(
-                texto = stringResource(R.string.app_name).uppercase(locale()),
+                texto = stringResource(R.string.marca),
                 tamano = if (angosta) 36.sp else 42.sp,
             )
             Spacer(Modifier.height(14.dp))
