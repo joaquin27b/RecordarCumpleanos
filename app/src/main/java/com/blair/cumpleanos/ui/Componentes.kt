@@ -62,6 +62,8 @@ import com.blair.cumpleanos.ui.theme.DegradeCian
 import com.blair.cumpleanos.ui.theme.DegradeRojo
 import com.blair.cumpleanos.ui.theme.Dorado
 import com.blair.cumpleanos.ui.theme.Escenario1
+import com.blair.cumpleanos.ui.theme.Escenario3
+import com.blair.cumpleanos.ui.theme.Resplandor2
 import com.blair.cumpleanos.ui.theme.EscenarioBorde
 import com.blair.cumpleanos.ui.theme.HazFucsia
 import com.blair.cumpleanos.ui.theme.NochePiso
@@ -83,9 +85,10 @@ private val ANILLOS_HALO = listOf(2f to 0.45f, 5f to 0.22f, 9f to 0.10f, 14f to 
  * blur: la sombra se ve a traves de una superficie translucida y ensucia el
  * interior, y blur es API 31+. Va antes del clip.
  */
-fun Modifier.halo(color: Color, radio: Dp = RadioTarjeta, trazo: Dp = 1.6.dp): Modifier = drawBehind {
+fun Modifier.halo(color: Color, radio: Dp = RadioTarjeta, trazo: Dp = 1.6.dp, fuerza: Float = 1f): Modifier = drawBehind {
     val r = radio.toPx()
-    ANILLOS_HALO.forEach { (sep, a) ->
+    ANILLOS_HALO.forEach { (sep, a0) ->
+        val a = a0 * fuerza
         val s = sep * density
         drawRoundRect(
             color,
@@ -115,14 +118,19 @@ private fun Modifier.sombraDifusa(radio: Dp): Modifier = drawBehind {
 }
 
 /**
- * Tarjeta sobre la escena atenuada: violeta al 55%, borde fino y sombra difusa.
+ * Tarjeta sobre la escena atenuada: violeta al 55% con reborde de neon.
  *
- * @param destacada la de "cumple hoy": borde cian, halo exterior y confeti propio.
+ * @param neon color del reborde y su resplandor: dice el estado de un vistazo
+ *   (rojo sin saludar, cian hoy, dorado cerca, violeta lejos).
+ * @param intenso reborde mas grueso y halo pleno: lo que pide accion ya.
+ * @param confeti un puñado de confeti propio, solo para la de "cumple hoy".
  */
 @Composable
 fun Tarjeta(
     modifier: Modifier = Modifier,
-    destacada: Boolean = false,
+    neon: Color = EscenarioBorde,
+    intenso: Boolean = false,
+    confeti: Boolean = false,
     onClick: (() -> Unit)? = null,
     contenido: @Composable ColumnScope.() -> Unit,
 ) {
@@ -130,15 +138,64 @@ fun Tarjeta(
     Column(
         modifier
             .fillMaxWidth()
-            .then(if (destacada) Modifier.halo(CianNeon) else Modifier.sombraDifusa(RadioTarjeta))
+            .sombraDifusa(RadioTarjeta)
+            .halo(neon, fuerza = if (intenso) 1f else 0.55f)
             .clip(forma)
             .background(FondoTarjeta)
-            .border(if (destacada) 1.5.dp else 1.dp, if (destacada) CianNeon else BordeTarjeta, forma)
-            .then(if (destacada) Modifier.confetiPropio() else Modifier)
+            .border(if (intenso) 2.dp else 1.4.dp, neon.copy(alpha = if (intenso) 1f else 0.85f), forma)
+            .then(if (confeti) Modifier.confetiPropio() else Modifier)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(16.dp),
         content = contenido,
     )
+}
+
+/**
+ * Marquesina de teatro: recuadro magenta con reborde de neon y lamparitas
+ * alrededor. Destaca la cabecera del resto de las tarjetas.
+ */
+@Composable
+fun Marquesina(modifier: Modifier = Modifier, contenido: @Composable () -> Unit) {
+    val forma = RoundedCornerShape(30.dp)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .halo(HazFucsia, radio = 30.dp, trazo = 2.dp)
+            .clip(forma)
+            .background(
+                Brush.verticalGradient(
+                    listOf(Resplandor2, Escenario3.copy(alpha = 0.92f), Escenario1.copy(alpha = 0.95f)),
+                ),
+            )
+            .border(2.dp, HazFucsia, forma)
+            .lamparitas()
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        contentAlignment = Alignment.Center,
+    ) { contenido() }
+}
+
+/** Lamparitas doradas y blancas alternadas por dentro del borde. Fijas: no titilan. */
+private fun Modifier.lamparitas(): Modifier = drawBehind {
+    val m = 9.dp.toPx()
+    val paso = 20.dp.toPx()
+    val r = 2.4.dp.toPx()
+    val ancho = size.width
+    val alto = size.height
+    val puntos = buildList {
+        var x = m + 16.dp.toPx()
+        while (x < ancho - m - 16.dp.toPx()) { add(Offset(x, m)); add(Offset(x, alto - m)); x += paso }
+        var y = m + 18.dp.toPx()
+        while (y < alto - m - 18.dp.toPx()) { add(Offset(m, y)); add(Offset(ancho - m, y)); y += paso }
+    }
+    puntos.forEachIndexed { i, c ->
+        val color = if (i % 2 == 0) Dorado else BlancoEscena
+        drawCircle(
+            Brush.radialGradient(listOf(color.copy(alpha = 0.55f), Color.Transparent), center = c, radius = r * 3f),
+            r * 3f,
+            c,
+        )
+        drawCircle(color, r, c)
+    }
 }
 
 /** Un puñado de confeti en la esquina de la tarjeta destacada. Fijo, sin animar. */

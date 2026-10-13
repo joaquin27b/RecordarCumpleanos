@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Birthday Reminder</string>
+    <string name="app_name">Recordar Cumpleaños</string>
     <!-- Titulo de marca dentro de la app: igual en todos los idiomas. -->
     <string name="marca" translatable="false">RECORDAR CUMPLEAÑOS</string>
 
@@ -128,4 +128,7 @@
         <item quantity="one">%1$s\'s birthday is in %2$d day, on %3$s</item>
         <item quantity="other">%1$s\'s birthday is in %2$d days, on %3$s</item>
     </plurals>
+    <string name="marca_lema">Never miss a birthday</string>
+    <string name="persona_sin_anio">no year</string>
+    <string name="regalo_tocar">No gift noted · tap to add</string>
 </resources>

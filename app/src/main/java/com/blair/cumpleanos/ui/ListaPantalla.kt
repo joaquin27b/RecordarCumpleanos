@@ -67,6 +67,8 @@ import com.blair.cumpleanos.ui.escena.VelitaEnEscenario
 import com.blair.cumpleanos.ui.theme.BlancoEscena
 import com.blair.cumpleanos.ui.theme.CianNeon
 import com.blair.cumpleanos.ui.theme.Dorado
+import com.blair.cumpleanos.ui.theme.EscenarioBorde
+import com.blair.cumpleanos.ui.theme.HazFucsia
 import com.blair.cumpleanos.ui.theme.RojoCta
 import com.blair.cumpleanos.ui.theme.TextoSecundario
 import java.time.LocalDate
@@ -315,25 +317,30 @@ fun ListaPantalla(
 fun esVacio(pasados: List<FilaCumple>, proximos: List<FilaLista>, personas: List<Persona>): Boolean =
     personas.isEmpty() && pasados.isEmpty() && proximos.isEmpty()
 
-/** Cabecera: Velita al lado del titulo de marca. La mascota acompaña toda la app. */
+/** Cabecera en marquesina: Velita al lado del titulo de marca y el lema. */
 @Composable
 private fun Cabecera(modifier: Modifier) {
-    Row(
-        modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        Velita(Modifier.width(62.dp))
-        Spacer(Modifier.width(12.dp))
-        TituloCromado(
-            texto = stringResource(R.string.marca),
-            tamano = 27.sp,
-            resplandor = false,
-            extrusion = 3,
-            alineacion = Alignment.Start,
-        )
+    Marquesina(modifier.padding(top = 12.dp, bottom = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            Velita(Modifier.width(70.dp))
+            Spacer(Modifier.width(14.dp))
+            Column {
+                TituloCromado(
+                    texto = stringResource(R.string.marca),
+                    tamano = 27.sp,
+                    resplandor = false,
+                    extrusion = 3,
+                    alineacion = Alignment.Start,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.marca_lema),
+                    color = Dorado,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+            }
+        }
     }
 }
 
@@ -385,7 +392,19 @@ private fun TarjetaCumple(
         Estado.PASADO, Estado.OLVIDADO -> RojoCta
         Estado.PROXIMO -> if (f.diasRestantes <= DIAS_DESTACADO) Dorado else BlancoEscena.copy(alpha = 0.6f)
     }
-    Tarjeta(modifier, destacada = hoy, onClick = { onEditar(f.c.personaId) }) {
+    val urgente = f.estado == Estado.PASADO || f.estado == Estado.OLVIDADO
+    val neon = when (f.estado) {
+        Estado.HOY -> CianNeon
+        Estado.PASADO, Estado.OLVIDADO -> RojoCta
+        Estado.PROXIMO -> if (f.diasRestantes <= DIAS_DESTACADO) Dorado else EscenarioBorde
+    }
+    Tarjeta(
+        modifier,
+        neon = neon,
+        intenso = hoy || urgente,
+        confeti = hoy,
+        onClick = { onEditar(f.c.personaId) },
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             InsigniaFecha(diaDelMes(f.c.fechaDia), mesCorto(f.c.fechaDia, loc), acento)
             Spacer(Modifier.width(14.dp))
@@ -401,7 +420,11 @@ private fun TarjetaCumple(
                 val cuando = tiempo(f.c.fechaDia, f.c.fechaDia - f.diasRestantes)
                 val detalle = listOfNotNull(fechaLarga(f.c.fechaDia, loc), textoEdad(res, f.edad, cuando)).joinToString("  ·  ")
                 Text(detalle, color = TextoSecundario, style = MaterialTheme.typography.bodyMedium)
-                f.c.regaloPlan?.let { LineaRegalo(stringResource(R.string.regalo_plan, it)) }
+                LineaRegalo(
+                    f.c.regaloPlan?.let { stringResource(R.string.regalo_plan, it) }
+                        ?: stringResource(R.string.regalo_tocar),
+                    apagada = f.c.regaloPlan == null,
+                )
                 Spacer(Modifier.height(2.dp))
                 PildoraDeEstado(f)
             }
@@ -442,7 +465,7 @@ private fun TarjetaPersonas(
     onBorrar: (Persona) -> Unit,
     modifier: Modifier,
 ) {
-    Tarjeta(modifier) {
+    Tarjeta(modifier, neon = HazFucsia) {
         personas.forEachIndexed { i, p ->
             if (i > 0) HorizontalDivider(color = BlancoEscena.copy(alpha = 0.10f))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -460,7 +483,11 @@ private fun TarjetaPersonas(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(fechaLarga(p.ancla, loc), color = TextoSecundario, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        fechaLarga(p.ancla, loc) + "  ·  " + (p.anioNacimiento?.toString() ?: stringResource(R.string.persona_sin_anio)),
+                        color = TextoSecundario,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
                 IconButton(onClick = { onBorrar(p) }) {
                     Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.accion_eliminar), tint = RojoCta)
@@ -504,7 +531,7 @@ private fun ControlesHistorial(
 @Composable
 private fun TarjetaSaludo(c: CumpleUi, loc: Locale, onEditarRegalo: () -> Unit, modifier: Modifier) {
     val res = LocalContext.current.resources
-    Tarjeta(modifier, onClick = onEditarRegalo) {
+    Tarjeta(modifier, neon = if (c.anulado) RojoCta else CianNeon, onClick = onEditarRegalo) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             InsigniaFecha(diaDelMes(c.fechaDia), mesCorto(c.fechaDia, loc), if (c.anulado) RojoCta else CianNeon)
             Spacer(Modifier.width(14.dp))

@@ -126,4 +126,7 @@
         <item quantity="one">%1$s cumple en %2$d día, el %3$s</item>
         <item quantity="other">%1$s cumple en %2$d días, el %3$s</item>
     </plurals>
+    <string name="marca_lema">Que ningún cumple se te pase</string>
+    <string name="persona_sin_anio">sin año</string>
+    <string name="regalo_tocar">Sin regalo anotado · tocá para anotar</string>
 </resources>
