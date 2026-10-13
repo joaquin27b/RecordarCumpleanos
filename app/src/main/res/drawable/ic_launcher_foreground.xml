@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Velita en el canvas de 108dp del adaptive icon. Dibujada en las mismas
+  unidades que Velita.kt (100 x 160) y llevada al circulo seguro de 66dp con un
+  group: escala 0.46 y traslado (31, 15.6). Llama arriba en y 23.9, base del
+  cuerpo en y 84.1: todo dentro del radio 33 desde el centro.
+  Sin pabilo: oscuro contra el violeta no se ve.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.46"
+        android:scaleY="0.46"
+        android:translateX="31"
+        android:translateY="15.6">
+
+        <!-- resplandor exterior cian -->
+        <path android:pathData="M-10,108 a60,60 0 1,0 120,0 a60,60 0 1,0 -120,0 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="radial"
+                    android:centerX="50"
+                    android:centerY="108"
+                    android:gradientRadius="60">
+                    <item android:offset="0" android:color="#5008A8F8" />
+                    <item android:offset="0.55" android:color="#2008A8F8" />
+                    <item android:offset="1" android:color="#0008A8F8" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- brazos -->
+        <path
+            android:pathData="M22,112 L12,126 M78,112 L88,126"
+            android:strokeColor="#0880F8"
+            android:strokeWidth="9"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M22,112 L12,126 M78,112 L88,126"
+            android:strokeColor="#48C8F8"
+            android:strokeWidth="5.5"
+            android:strokeLineCap="round" />
+
+        <!-- cuerpo -->
+        <path android:pathData="M48,66 H52 A30,30 0 0 1 82,96 V127 A22,22 0 0 1 60,149 H40 A22,22 0 0 1 18,127 V96 A30,30 0 0 1 48,66 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="50"
+                    android:startY="66"
+                    android:endX="50"
+                    android:endY="149">
+                    <item android:offset="0" android:color="#FF48C8F8" />
+                    <item android:offset="0.5" android:color="#FF08A8F8" />
+                    <item android:offset="1" android:color="#FF0880F8" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <group>
+            <clip-path android:pathData="M48,66 H52 A30,30 0 0 1 82,96 V127 A22,22 0 0 1 60,149 H40 A22,22 0 0 1 18,127 V96 A30,30 0 0 1 48,66 Z" />
+            <!-- franjas de vela -->
+            <path
+                android:fillColor="#29FFFFFF"
+                android:pathData="M10,92 L90,70 L90,77 L10,99 Z M10,109 L90,87 L90,94 L10,116 Z M10,126 L90,104 L90,111 L10,133 Z" />
+            <!-- luz principal arriba a la izquierda -->
+            <path android:pathData="M18,66 H82 V149 H18 Z">
+                <aapt:attr name="android:fillColor">
+                    <gradient
+                        android:type="radial"
+                        android:centerX="34"
+                        android:centerY="82"
+                        android:gradientRadius="46">
+                        <item android:offset="0" android:color="#73FFFFFF" />
+                        <item android:offset="0.5" android:color="#1AFFFFFF" />
+                        <item android:offset="1" android:color="#00FFFFFF" />
+                    </gradient>
+                </aapt:attr>
+            </path>
+            <!-- cera derretida -->
+            <path android:pathData="M18,60 L82,60 L82,82 C82,86 77,86 77,82 C77,79 72,78 71,82 L71,90 C71,95 64,95 64,90 L64,81 C63,77 55,77 54,81 C53,84 47,84 46,81 C45,78 38,78 37,82 L37,92 C37,97 30,97 30,92 L30,84 C29,79 22,79 21,84 C20,88 18,88 18,86 Z">
+                <aapt:attr name="android:fillColor">
+                    <gradient
+                        android:type="linear"
+                        android:startX="50"
+                        android:startY="64"
+                        android:endX="50"
+                        android:endY="96">
+                        <item android:offset="0" android:color="#FFF8F8F8" />
+                        <item android:offset="0.5" android:color="#FFF8E8F8" />
+                        <item android:offset="1" android:color="#FFF0C0F8" />
+                    </gradient>
+                </aapt:attr>
+            </path>
+        </group>
+
+        <!-- rim light: solo abajo a la derecha -->
+        <path
+            android:pathData="M48,66 H52 A30,30 0 0 1 82,96 V127 A22,22 0 0 1 60,149 H40 A22,22 0 0 1 18,127 V96 A30,30 0 0 1 48,66 Z"
+            android:strokeWidth="3">
+            <aapt:attr name="android:strokeColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="18"
+                    android:startY="66"
+                    android:endX="82"
+                    android:endY="149">
+                    <item android:offset="0" android:color="#0030F0F8" />
+                    <item android:offset="0.55" android:color="#0030F0F8" />
+                    <item android:offset="1" android:color="#FF30F0F8" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- especulares -->
+        <group
+            android:pivotX="30"
+            android:pivotY="80"
+            android:rotation="-24">
+            <path
+                android:fillColor="#E6FFFFFF"
+                android:pathData="M26,79.5 a3.5,7.5 0 1,0 7,0 a3.5,7.5 0 1,0 -7,0 Z" />
+        </group>
+        <path
+            android:fillColor="#99FFFFFF"
+            android:pathData="M24.5,94.5 a2,2.5 0 1,0 4,0 a2,2.5 0 1,0 -4,0 Z" />
+
+        <!-- cachetes -->
+        <path android:pathData="M22,112 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="radial"
+                    android:centerX="30"
+                    android:centerY="112"
+                    android:gradientRadius="8">
+                    <item android:offset="0" android:color="#73F84058" />
+                    <item android:offset="1" android:color="#00F84058" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:pathData="M62,112 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="radial"
+                    android:centerX="70"
+                    android:centerY="112"
+                    android:gradientRadius="8">
+                    <item android:offset="0" android:color="#73F84058" />
+                    <item android:offset="1" android:color="#00F84058" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- ojos con tres brillos -->
+        <path
+            android:fillColor="#FF100038"
+            android:pathData="M32,100.5 a5,6.5 0 1,0 10,0 a5,6.5 0 1,0 -10,0 Z M58,100.5 a5,6.5 0 1,0 10,0 a5,6.5 0 1,0 -10,0 Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M32.7,97.6 a2.7,2.7 0 1,0 5.4,0 a2.7,2.7 0 1,0 -5.4,0 Z M58.7,97.6 a2.7,2.7 0 1,0 5.4,0 a2.7,2.7 0 1,0 -5.4,0 Z M37.7,103 a1.4,1.4 0 1,0 2.8,0 a1.4,1.4 0 1,0 -2.8,0 Z M63.7,103 a1.4,1.4 0 1,0 2.8,0 a1.4,1.4 0 1,0 -2.8,0 Z" />
+
+        <!-- boca abierta con lengua -->
+        <path
+            android:fillColor="#FF300870"
+            android:pathData="M41,114 C45,115.5 55,115.5 59,114 C59,121 55,126 50,126 C45,126 41,121 41,114 Z" />
+        <group>
+            <clip-path android:pathData="M41,114 C45,115.5 55,115.5 59,114 C59,121 55,126 50,126 C45,126 41,121 41,114 Z" />
+            <path
+                android:fillColor="#FFF84058"
+                android:pathData="M44.5,124.5 a5.5,4 0 1,0 11,0 a5.5,4 0 1,0 -11,0 Z" />
+        </group>
+
+        <!-- halo calido de la llama -->
+        <path android:pathData="M12,48 a38,38 0 1,0 76,0 a38,38 0 1,0 -76,0 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="radial"
+                    android:centerX="50"
+                    android:centerY="48"
+                    android:gradientRadius="38">
+                    <item android:offset="0" android:color="#80F8D818" />
+                    <item android:offset="0.5" android:color="#24E03840" />
+                    <item android:offset="1" android:color="#00E03840" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- llama apoyada sobre la cabeza -->
+        <path android:pathData="M50,18 C55.85,33.75 63,41.3 63,53 C63,60.8 57.15,66 50,66 C42.85,66 37,60.8 37,53 C37,41.3 44.15,33.75 50,18 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="50"
+                    android:startY="18"
+                    android:endX="50"
+                    android:endY="66">
+                    <item android:offset="0" android:color="#FFE03840" />
+                    <item android:offset="0.5" android:color="#FFF8D818" />
+                    <item android:offset="1" android:color="#FFF8D818" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path
+            android:fillColor="#FFFFF8D8"
+            android:pathData="M50,38 C52.925,46.775 56.5,51.65 56.5,57.5 C56.5,61.4 53.575,64 50,64 C46.425,64 43.5,61.4 43.5,57.5 C43.5,51.65 47.075,46.775 50,38 Z" />
+
+        <!-- destellos -->
+        <path
+            android:fillColor="#FFF8F8F8"
+            android:pathData="M12,33 Q12.9,39.1 17,40 Q12.9,40.9 12,47 Q11.1,40.9 7,40 Q11.1,39.1 12,33 Z" />
+        <path
+            android:fillColor="#FFF8D818"
+            android:pathData="M88,23 Q88.65,27.35 91.6,28 Q88.65,28.65 88,33 Q87.35,28.65 84.4,28 Q87.35,27.35 88,23 Z" />
+    </group>
+</vector>

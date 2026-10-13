@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Solo debug: fondo del icono en naranja para distinguirla de la de Play en el cajon. -->
-<resources>
-    <color name="ic_fondo">#E65100</color>
-</resources>

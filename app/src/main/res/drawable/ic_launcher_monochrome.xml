@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Iconos tematicos de Android 13+: silueta de Velita y su llama, con ojos y
+     boca calados (evenOdd). El sistema solo usa el alfa. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.46"
+        android:scaleY="0.46"
+        android:translateX="31"
+        android:translateY="15.6">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M48,66 H52 A30,30 0 0 1 82,96 V127 A22,22 0 0 1 60,149 H40 A22,22 0 0 1 18,127 V96 A30,30 0 0 1 48,66 Z M32,100.5 a5,6.5 0 1,0 10,0 a5,6.5 0 1,0 -10,0 Z M58,100.5 a5,6.5 0 1,0 10,0 a5,6.5 0 1,0 -10,0 Z M41,114 C45,115.5 55,115.5 59,114 C59,121 55,126 50,126 C45,126 41,121 41,114 Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M50,18 C55.85,33.75 63,41.3 63,53 C63,58.5 59.5,62.5 55,63.6 L45,63.6 C40.5,62.5 37,58.5 37,53 C37,41.3 44.15,33.75 50,18 Z" />
+    </group>
+</vector>
