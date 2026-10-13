@@ -13,23 +13,20 @@
     <string name="lista_vacia">No birthdays yet</string>
     <string name="hist_vacio">NO GREETINGS YET</string>
 
-    <string name="estado_hoy">Today</string>
-    <string name="estado_proximo">Upcoming</string>
-    <string name="estado_pasado">Already passed</string>
 
     <string name="cumple_hoy">Birthday is TODAY</string>
     <string name="cumple_manana">Birthday is tomorrow</string>
-    <plurals name="cumple_en_dias">
-        <item quantity="one">In %d day</item>
-        <item quantity="other">In %d days</item>
-    </plurals>
-    <plurals name="cumple_hace_dias">
-        <item quantity="one">%d day ago</item>
-        <item quantity="other">%d days ago</item>
-    </plurals>
-    <plurals name="edad_cumple">
+    <plurals name="edad_futuro">
         <item quantity="one">turns %d</item>
         <item quantity="other">turns %d</item>
+    </plurals>
+    <plurals name="edad_hoy">
+        <item quantity="one">turns %d TODAY</item>
+        <item quantity="other">turns %d TODAY</item>
+    </plurals>
+    <plurals name="edad_pasado">
+        <item quantity="one">turned %d</item>
+        <item quantity="other">turned %d</item>
     </plurals>
 
     <string name="accion_agregar">NEW BIRTHDAY</string>
@@ -55,7 +52,7 @@
     <string name="error_colision">Another birthday of this person is already on that date.</string>
 
     <string name="hist_titulo">Greeting</string>
-    <string name="hist_cumplio_el">Birthday: %1$s</string>
+    <string name="hist_cumplio_el">Birthday was %1$s</string>
     <string name="hist_saludado_el">Greeted: %1$s</string>
     <string name="hist_anulado">Undone</string>
     <string name="accion_anular">Undo greeting</string>
@@ -70,7 +67,6 @@
 
     <string name="notif_cumple_hoy">%1$s has a birthday TODAY</string>
     <string name="notif_cumple_manana">%1$s has a birthday TOMORROW, %2$s</string>
-    <string name="notif_cumple_titulo">%1$s has a birthday on %2$s</string>
     <string name="notif_resumen_titulo">%1$s birthdays</string>
     <plurals name="notif_resumen_cuerpo">
         <item quantity="one">%d birthday this month</item>
@@ -121,4 +117,13 @@
     <string name="accion_guardar_saludo">SAVE GREETING</string>
     <string name="regalo_editar_titulo">Gift for %1$s</string>
     <string name="regalo_plan_era">The idea was: %1$s</string>
+    <string name="hist_cumple_hoy">Birthday is today, %1$s</string>
+    <plurals name="notif_cumple_hoy_edad">
+        <item quantity="one">%1$s turns %2$d TODAY</item>
+        <item quantity="other">%1$s turns %2$d TODAY</item>
+    </plurals>
+    <plurals name="notif_cumple_en">
+        <item quantity="one">%1$s\'s birthday is in %2$d day, on %3$s</item>
+        <item quantity="other">%1$s\'s birthday is in %2$d days, on %3$s</item>
+    </plurals>
 </resources>

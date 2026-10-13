@@ -13,23 +13,20 @@
     <string name="lista_vacia">Todavía no cargaste cumpleaños</string>
     <string name="hist_vacio">NO HAY SALUDOS HECHOS</string>
 
-    <string name="estado_hoy">Hoy</string>
-    <string name="estado_proximo">Próximo</string>
-    <string name="estado_pasado">Ya pasó</string>
 
     <string name="cumple_hoy">Cumple HOY</string>
     <string name="cumple_manana">Cumple mañana</string>
-    <plurals name="cumple_en_dias">
-        <item quantity="one">En %d día</item>
-        <item quantity="other">En %d días</item>
-    </plurals>
-    <plurals name="cumple_hace_dias">
-        <item quantity="one">Hace %d día</item>
-        <item quantity="other">Hace %d días</item>
-    </plurals>
-    <plurals name="edad_cumple">
+    <plurals name="edad_futuro">
         <item quantity="one">cumple %d año</item>
         <item quantity="other">cumple %d años</item>
+    </plurals>
+    <plurals name="edad_hoy">
+        <item quantity="one">cumple HOY %d año</item>
+        <item quantity="other">cumple HOY %d años</item>
+    </plurals>
+    <plurals name="edad_pasado">
+        <item quantity="one">cumplió %d año</item>
+        <item quantity="other">cumplió %d años</item>
     </plurals>
 
     <string name="accion_agregar">NUEVO CUMPLEAÑOS</string>
@@ -55,7 +52,7 @@
     <string name="error_colision">Esta persona ya tiene otro cumpleaños en esa fecha.</string>
 
     <string name="hist_titulo">Saludo</string>
-    <string name="hist_cumplio_el">Cumpleaños: %1$s</string>
+    <string name="hist_cumplio_el">Cumplió el %1$s</string>
     <string name="hist_saludado_el">Saludado: %1$s</string>
     <string name="hist_anulado">Anulado</string>
     <string name="accion_anular">Anular saludo</string>
@@ -70,7 +67,6 @@
 
     <string name="notif_cumple_hoy">%1$s cumple HOY</string>
     <string name="notif_cumple_manana">%1$s cumple MAÑANA, %2$s</string>
-    <string name="notif_cumple_titulo">%1$s cumple el %2$s</string>
     <string name="notif_resumen_titulo">Cumpleaños de %1$s</string>
     <plurals name="notif_resumen_cuerpo">
         <item quantity="one">%d cumpleaños este mes</item>
@@ -121,4 +117,13 @@
     <string name="accion_guardar_saludo">GUARDAR SALUDO</string>
     <string name="regalo_editar_titulo">Regalo para %1$s</string>
     <string name="regalo_plan_era">Lo pensado era: %1$s</string>
+    <string name="hist_cumple_hoy">Cumple hoy, %1$s</string>
+    <plurals name="notif_cumple_hoy_edad">
+        <item quantity="one">%1$s cumple HOY %2$d año</item>
+        <item quantity="other">%1$s cumple HOY %2$d años</item>
+    </plurals>
+    <plurals name="notif_cumple_en">
+        <item quantity="one">%1$s cumple en %2$d día, el %3$s</item>
+        <item quantity="other">%1$s cumple en %2$d días, el %3$s</item>
+    </plurals>
 </resources>

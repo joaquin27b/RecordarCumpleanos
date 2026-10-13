@@ -57,6 +57,8 @@ import com.blair.cumpleanos.datos.CumpleUi
 import com.blair.cumpleanos.datos.Persona
 import com.blair.cumpleanos.datos.PersonaConHistorial
 import com.blair.cumpleanos.dominio.Estado
+import com.blair.cumpleanos.dominio.Tiempo
+import com.blair.cumpleanos.dominio.tiempo
 import com.blair.cumpleanos.dominio.diaDelMes
 import com.blair.cumpleanos.dominio.edad
 import com.blair.cumpleanos.ui.escena.TituloCromado
@@ -66,6 +68,7 @@ import com.blair.cumpleanos.ui.theme.CianNeon
 import com.blair.cumpleanos.ui.theme.Dorado
 import com.blair.cumpleanos.ui.theme.RojoCta
 import com.blair.cumpleanos.ui.theme.TextoSecundario
+import java.time.LocalDate
 import java.time.YearMonth
 import java.util.Locale
 
@@ -385,7 +388,8 @@ private fun TarjetaCumple(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val detalle = listOfNotNull(fechaLarga(f.c.fechaDia, loc), textoEdad(res, f.edad)).joinToString("  ·  ")
+                val cuando = tiempo(f.c.fechaDia, f.c.fechaDia - f.diasRestantes)
+                val detalle = listOfNotNull(fechaLarga(f.c.fechaDia, loc), textoEdad(res, f.edad, cuando)).joinToString("  ·  ")
                 Text(detalle, color = TextoSecundario, style = MaterialTheme.typography.bodyMedium)
                 f.c.regaloPlan?.let { LineaRegalo(stringResource(R.string.regalo_plan, it)) }
                 Spacer(Modifier.height(2.dp))
@@ -503,8 +507,13 @@ private fun TarjetaSaludo(c: CumpleUi, loc: Locale, onEditarRegalo: () -> Unit, 
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                val hoy = LocalDate.now().toEpochDay().toInt()
+                val cuando = tiempo(c.fechaDia, hoy)
                 Text(
-                    res.getString(R.string.hist_cumplio_el, fechaDiaMesAnio(c.fechaDia, loc)),
+                    res.getString(
+                        if (cuando == Tiempo.HOY) R.string.hist_cumple_hoy else R.string.hist_cumplio_el,
+                        fechaDiaMesAnio(c.fechaDia, loc),
+                    ),
                     color = TextoSecundario,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -515,7 +524,7 @@ private fun TarjetaSaludo(c: CumpleUi, loc: Locale, onEditarRegalo: () -> Unit, 
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                textoEdad(res, edad(c.fechaDia, c.anioNacimiento))?.let {
+                textoEdad(res, edad(c.fechaDia, c.anioNacimiento), cuando)?.let {
                     Text(it, color = TextoSecundario, style = MaterialTheme.typography.bodySmall)
                 }
                 // NULL de las filas de la v1: se dice, no se deja un hueco.

@@ -21,12 +21,15 @@ object Emisor {
      *
      * Sin botones de accion: tocarla abre la app.
      */
-    fun cumple(ctx: Context, personaId: Long, nombre: String, fechaDia: Int, diasRestantes: Int) {
+    fun cumple(ctx: Context, personaId: Long, nombre: String, fechaDia: Int, diasRestantes: Int, edad: Int?) {
         val loc: Locale = ctx.resources.configuration.locales[0]
-        val texto = when (diasRestantes) {
-            0 -> ctx.getString(R.string.notif_cumple_hoy, nombre)
-            1 -> ctx.getString(R.string.notif_cumple_manana, nombre, fechaLarga(fechaDia, loc))
-            else -> ctx.getString(R.string.notif_cumple_titulo, nombre, fechaLarga(fechaDia, loc))
+        val res = ctx.resources
+        val texto = when {
+            // Sin año no se sabe cuantos cumple: el aviso no lo menciona.
+            diasRestantes == 0 && edad != null -> res.getQuantityString(R.plurals.notif_cumple_hoy_edad, edad, nombre, edad)
+            diasRestantes == 0 -> ctx.getString(R.string.notif_cumple_hoy, nombre)
+            diasRestantes == 1 -> ctx.getString(R.string.notif_cumple_manana, nombre, fechaLarga(fechaDia, loc))
+            else -> res.getQuantityString(R.plurals.notif_cumple_en, diasRestantes, nombre, diasRestantes, fechaLarga(fechaDia, loc))
         }
         emitir(ctx, personaId.toInt(), CANAL_CUMPLE, nombre, texto, NotificationCompat.PRIORITY_HIGH)
     }

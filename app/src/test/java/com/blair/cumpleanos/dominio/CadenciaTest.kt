@@ -56,4 +56,11 @@ class CadenciaTest {
 
     @Test fun `resumen atrasado se emite igual`() =
         assertTrue(avisaResumen(202608, 2026, 9, 4))
+
+    @Test fun `el preaviso de 3 dias se ofrece y avisa si esta configurado`() {
+        assertTrue(3 in Cadencia.DISPONIBLES)
+        assertTrue(Cadencia.avisa(hoy + 3, hoy, null, "7,3,1"))
+        // El default de los testers ("7,1" o null) no lo incluye: no cambia su cadencia.
+        assertFalse(Cadencia.avisa(hoy + 3, hoy, null, null))
+    }
 }

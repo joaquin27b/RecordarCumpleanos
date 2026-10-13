@@ -3,7 +3,7 @@ package com.blair.cumpleanos.dominio
 object Cadencia {
 
     /** Opciones que se le ofrecen al usuario. D-0 no esta: siempre avisa. */
-    val DISPONIBLES = intArrayOf(30, 15, 7, 1)
+    val DISPONIBLES = intArrayOf(30, 15, 7, 3, 1)
 
     /** Lo que trae una persona recien creada si el usuario no toca nada. */
     val POR_DEFECTO = intArrayOf(7, 1)

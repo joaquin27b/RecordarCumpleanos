@@ -11,11 +11,14 @@ import com.blair.cumpleanos.R
 import com.blair.cumpleanos.dominio.Cadencia
 import com.blair.cumpleanos.dominio.anioDe
 import com.blair.cumpleanos.dominio.avisaResumen
+import com.blair.cumpleanos.dominio.edad
 import com.blair.cumpleanos.dominio.mesDe
+import com.blair.cumpleanos.ui.nombreMesSolo
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.YearMonth
 import java.util.concurrent.TimeUnit
 
 private const val CLAVE_RESUMEN = "ultimo_resumen_ym"
@@ -35,7 +38,10 @@ class TickWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
 
         dao.abiertosAhora().forEach { c ->
             if (Cadencia.avisa(c.fechaDia, hoy, c.avisoUltimoDia, c.preavisos)) {
-                Emisor.cumple(applicationContext, c.personaId, c.nombre, c.fechaDia, c.fechaDia - hoy)
+                Emisor.cumple(
+                    applicationContext, c.personaId, c.nombre, c.fechaDia, c.fechaDia - hoy,
+                    edad(c.fechaDia, c.anioNacimiento),
+                )
                 dao.marcarAviso(c.id, hoy)
             }
         }
@@ -48,7 +54,11 @@ class TickWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
             if (delMes.isNotEmpty()) {
                 Emisor.resumen(
                     applicationContext,
-                    applicationContext.getString(R.string.notif_resumen_titulo, delMes.size.toString()),
+                    // El mes y no la cantidad: "Cumpleaños de 3" no se entendia.
+                    applicationContext.getString(
+                        R.string.notif_resumen_titulo,
+                        nombreMesSolo(YearMonth.from(hoyFecha), applicationContext.resources.configuration.locales[0]),
+                    ),
                     applicationContext.resources.getQuantityString(
                         R.plurals.notif_resumen_cuerpo, delMes.size, delMes.size,
                     ),

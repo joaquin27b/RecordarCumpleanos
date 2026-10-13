@@ -3,7 +3,7 @@ package com.blair.cumpleanos.ui
 import android.content.res.Resources
 import android.text.format.DateFormat
 import com.blair.cumpleanos.R
-import com.blair.cumpleanos.dominio.Estado
+import com.blair.cumpleanos.dominio.Tiempo
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -30,24 +30,25 @@ fun nombreMes(ym: YearMonth, locale: Locale): String =
     fmt("MMMMy", locale).format(ym.atDay(1))
         .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
 
-/** "Cumple HOY" / "En 3 días" / "Hace 12 días" */
-fun cuerpoCumple(res: Resources, diasRestantes: Int): String = when {
-    diasRestantes < 0 ->
-        res.getQuantityString(R.plurals.cumple_hace_dias, -diasRestantes, -diasRestantes)
-    diasRestantes == 0 -> res.getString(R.string.cumple_hoy)
-    diasRestantes == 1 -> res.getString(R.string.cumple_manana)
-    else -> res.getQuantityString(R.plurals.cumple_en_dias, diasRestantes, diasRestantes)
+/**
+ * "cumple 36 años" / "cumple HOY 36 años" / "cumplió 36 años". null sin año.
+ *
+ * Tres claves y no una con logica adentro: el tiempo verbal lo decide Kotlin
+ * comparando la fecha del evento con hoy, el recurso solo pluraliza.
+ */
+fun textoEdad(res: Resources, edad: Int?, tiempo: Tiempo): String? = edad?.let {
+    val id = when (tiempo) {
+        Tiempo.FUTURO -> R.plurals.edad_futuro
+        Tiempo.HOY -> R.plurals.edad_hoy
+        Tiempo.PASADO -> R.plurals.edad_pasado
+    }
+    // La cantidad va DOS veces: una elige la forma, la otra llena el %d.
+    res.getQuantityString(id, it, it)
 }
 
-/** "cumple 36 años". null si no se conoce el anio de nacimiento. */
-fun textoEdad(res: Resources, edad: Int?): String? =
-    edad?.let { res.getQuantityString(R.plurals.edad_cumple, it, it) }
-
-fun etiquetaEstado(res: Resources, estado: Estado): String = when (estado) {
-    Estado.HOY -> res.getString(R.string.estado_hoy)
-    Estado.PROXIMO -> res.getString(R.string.estado_proximo)
-    Estado.PASADO, Estado.OLVIDADO -> res.getString(R.string.estado_pasado)
-}
+/** "octubre" / "October": el mes solo, para el titulo del resumen mensual. */
+fun nombreMesSolo(ym: YearMonth, locale: Locale): String =
+    fmt("LLLL", locale).format(ym.atDay(1))
 
 /** "OCT" / "OCT": mes corto en mayusculas, sin el punto de la abreviatura. */
 fun mesCorto(epochDay: Int, locale: Locale): String =
