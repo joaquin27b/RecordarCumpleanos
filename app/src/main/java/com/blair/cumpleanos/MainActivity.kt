@@ -7,6 +7,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.blair.cumpleanos.ui.SplashPantalla
+import com.blair.cumpleanos.ui.escena.Escenario
+import com.blair.cumpleanos.ui.escena.Intensidad
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.work.OneTimeWorkRequestBuilder
@@ -51,6 +62,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Antes de super: el splash del sistema muestra solo la noche del
+        // escenario y le pasa la posta a SplashPantalla sin corte de color.
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         // Barras forzadas a estilo oscuro: con el telefono en modo claro,
         // enableEdgeToEdge() sin argumentos pinta los iconos oscuros y sobre la
@@ -67,77 +81,111 @@ class MainActivity : ComponentActivity() {
                 .enqueue(OneTimeWorkRequestBuilder<TickWorker>().build())
         }
         val app = application as CumpleanosApp
+        val vista = if (BuildConfig.DEBUG) intent?.getStringExtra("vista") else null
+        if (vista != null) {
+            setContent { RecordarCumpleanosTheme { com.blair.cumpleanos.ui.VistaPrevia(vista) } }
+            return
+        }
+        // El show de apertura va solo en arranque en frio, no al rotar.
+        val arranqueEnFrio = savedInstanceState == null
         setContent {
             RecordarCumpleanosTheme {
                 val vm: ListaViewModel = viewModel(factory = ListaViewModel.factory(app.repo, app.db))
+                var enSplash by rememberSaveable { mutableStateOf(arranqueEnFrio) }
+                val encendido = remember { Animatable(if (arranqueEnFrio) 0f else 1f) }
+                val personas by vm.personas.collectAsStateWithLifecycle()
                 val pasados by vm.pasados.collectAsStateWithLifecycle()
                 val proximos by vm.proximos.collectAsStateWithLifecycle()
-                val personas by vm.personas.collectAsStateWithLifecycle()
-                val historial by vm.historial.collectAsStateWithLifecycle()
-                val mes by vm.mes.collectAsStateWithLifecycle()
-                val porAnio by vm.porAnio.collectAsStateWithLifecycle()
-                var enAlta by remember { mutableStateOf(false) }
-                val personaAbierta by vm.personaAbierta.collectAsStateWithLifecycle()
-                val colision by vm.colision.collectAsStateWithLifecycle()
-                val conHistorial by vm.conHistorial.collectAsStateWithLifecycle()
+                val vacio = personas.isEmpty() && pasados.isEmpty() && proximos.isEmpty()
 
-                Scaffold(
-                    contentWindowInsets = WindowInsets.systemBars.add(WindowInsets.ime),
-                    bottomBar = { BannerAdaptativo() },
-                    floatingActionButton = {
-                        if (!enAlta) {
-                            ExtendedFloatingActionButton(
-                                onClick = { enAlta = true },
-                                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                                text = { Text(stringResource(R.string.accion_agregar)) },
-                            )
-                        }
-                    },
-                ) { innerPadding ->
-                    if (enAlta) {
-                        AltaPantalla(
-                            onGuardar = { nombre, dia, mes, anio, preav ->
-                                vm.crear(nombre, dia, mes, anio, preav)
-                                enAlta = false
-                            },
-                            onCancelar = { enAlta = false },
-                            modifier = Modifier.padding(innerPadding),
-                        )
-                    } else {
-                    ListaPantalla(
-                        pasados = pasados,
-                        proximos = proximos,
-                        personas = personas,
-                        historial = historial,
-                        mes = mes,
-                        porAnio = porAnio,
-                        onSaludar = { f -> vm.saludar(f.c.personaId, f.c.id) },
-                        onEditarPersona = { id -> vm.abrirPersona(id) },
-                        onEliminarPersona = { id -> vm.eliminarPersona(id) },
-                        onBorrarHistorial = { vm.borrarHistorial() },
-                        onBorrarHistorialDe = { id -> vm.borrarHistorialDe(id) },
-                        conHistorial = conHistorial,
-                        onMesAnterior = vm::mesAnterior,
-                        onMesSiguiente = vm::mesSiguiente,
-                        onAlternarPorAnio = vm::alternarPorAnio,
-                        modifier = Modifier.padding(innerPadding),
+                Box(Modifier.fillMaxSize()) {
+                    // Detras de TODO. Completa en el splash y con la lista vacia;
+                    // atenuada con tarjetas encima, o no se lee nada.
+                    Escenario(
+                        intensidad = if (enSplash || vacio) Intensidad.COMPLETA else Intensidad.ATENUADA,
+                        encendido = { encendido.value },
                     )
+                    Crossfade(targetState = enSplash, animationSpec = tween(550), label = "apertura") { splash ->
+                        if (splash) {
+                            SplashPantalla(encendido) { enSplash = false }
+                        } else {
+                            Contenido(vm)
+                        }
                     }
                 }
+            }
+        }
+    }
 
-                personaAbierta?.let { p ->
-                    HojaPersona(
-                        persona = p,
-                        colision = colision,
-                        onGuardar = { editada, dia, mes ->
-                            vm.editarPersona(editada, dia, mes) { vm.abrirPersona(null) }
-                        },
-                        onEliminar = { vm.eliminarPersona(p.id); vm.abrirPersona(null) },
-                        onBorrarHistorial = { vm.borrarHistorialDe(p.id) },
-                        onCerrar = { vm.abrirPersona(null) },
+    @Composable
+    private fun Contenido(vm: ListaViewModel) {
+        val pasados by vm.pasados.collectAsStateWithLifecycle()
+        val proximos by vm.proximos.collectAsStateWithLifecycle()
+        val personas by vm.personas.collectAsStateWithLifecycle()
+        val historial by vm.historial.collectAsStateWithLifecycle()
+        val mes by vm.mes.collectAsStateWithLifecycle()
+        val porAnio by vm.porAnio.collectAsStateWithLifecycle()
+        var enAlta by remember { mutableStateOf(false) }
+        val personaAbierta by vm.personaAbierta.collectAsStateWithLifecycle()
+        val colision by vm.colision.collectAsStateWithLifecycle()
+        val conHistorial by vm.conHistorial.collectAsStateWithLifecycle()
+
+        Scaffold(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
+            contentWindowInsets = WindowInsets.systemBars.add(WindowInsets.ime),
+            bottomBar = { BannerAdaptativo() },
+            floatingActionButton = {
+                if (!enAlta) {
+                    ExtendedFloatingActionButton(
+                        onClick = { enAlta = true },
+                        icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                        text = { Text(stringResource(R.string.accion_agregar)) },
                     )
                 }
+            },
+        ) { innerPadding ->
+            if (enAlta) {
+                AltaPantalla(
+                    onGuardar = { nombre, dia, mes, anio, preav ->
+                        vm.crear(nombre, dia, mes, anio, preav)
+                        enAlta = false
+                    },
+                    onCancelar = { enAlta = false },
+                    modifier = Modifier.padding(innerPadding),
+                )
+            } else {
+            ListaPantalla(
+                pasados = pasados,
+                proximos = proximos,
+                personas = personas,
+                historial = historial,
+                mes = mes,
+                porAnio = porAnio,
+                onSaludar = { f -> vm.saludar(f.c.personaId, f.c.id) },
+                onEditarPersona = { id -> vm.abrirPersona(id) },
+                onEliminarPersona = { id -> vm.eliminarPersona(id) },
+                onBorrarHistorial = { vm.borrarHistorial() },
+                onBorrarHistorialDe = { id -> vm.borrarHistorialDe(id) },
+                conHistorial = conHistorial,
+                onMesAnterior = vm::mesAnterior,
+                onMesSiguiente = vm::mesSiguiente,
+                onAlternarPorAnio = vm::alternarPorAnio,
+                modifier = Modifier.padding(innerPadding),
+            )
             }
+        }
+
+        personaAbierta?.let { p ->
+            HojaPersona(
+                persona = p,
+                colision = colision,
+                onGuardar = { editada, dia, mes ->
+                    vm.editarPersona(editada, dia, mes) { vm.abrirPersona(null) }
+                },
+                onEliminar = { vm.eliminarPersona(p.id); vm.abrirPersona(null) },
+                onBorrarHistorial = { vm.borrarHistorialDe(p.id) },
+                onCerrar = { vm.abrirPersona(null) },
+            )
         }
     }
 }

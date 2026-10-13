@@ -7,4 +7,13 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
+
+    <!-- Splash del sistema: solo la noche del escenario, sin icono. El show
+         completo lo hace SplashPantalla en Compose, sobre el mismo color. -->
+    <style name="Theme.RecordarCumpleanos.Arranque" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/noche</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/arranque_vacio</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/noche</item>
+        <item name="postSplashScreenTheme">@style/Theme.RecordarCumpleanos</item>
+    </style>
 </resources>
