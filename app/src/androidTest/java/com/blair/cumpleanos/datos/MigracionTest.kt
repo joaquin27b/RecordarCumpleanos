@@ -36,6 +36,11 @@ private data class FilaCumple(
     val saludado: Int, val saludadoDia: Int?, val anulado: Int,
 )
 
+private data class FilaPersona(
+    val id: Long, val nombre: String, val diaHabitual: Int, val anioNacimiento: Int?,
+    val ancla: Int, val ultimoSaludoDia: Int?, val activo: Int, val preavisos: String?,
+)
+
 private fun Cursor.intONull(col: String): Int? =
     getColumnIndexOrThrow(col).let { if (isNull(it)) null else getInt(it) }
 
@@ -68,7 +73,7 @@ class MigracionTest {
             .addMigrations(migracion)
             .build()
 
-    /** 2 personas, 3 ocurrencias, 1 saludo con fecha. */
+    /** 4 personas, 3 ocurrencias, 1 saludo con fecha. */
     private fun sembrarV1(db: SupportSQLiteDatabase) {
         db.execSQL(
             "INSERT INTO persona (id, nombre, diaHabitual, anioNacimiento, ancla, ultimoSaludoDia, activo, preavisos) " +
@@ -77,6 +82,16 @@ class MigracionTest {
         db.execSQL(
             "INSERT INTO persona (id, nombre, diaHabitual, anioNacimiento, ancla, ultimoSaludoDia, activo, preavisos) " +
                 "VALUES (2, 'Beto', 29, NULL, ${d(2027, 2, 28)}, NULL, 1, NULL)"
+        )
+        // TEXT con ñ y tilde atravesando el ALTER TABLE.
+        db.execSQL(
+            "INSERT INTO persona (id, nombre, diaHabitual, anioNacimiento, ancla, ultimoSaludoDia, activo, preavisos) " +
+                "VALUES (3, 'Ñandú', 2, 1985, ${d(2026, 11, 2)}, NULL, 1, NULL)"
+        )
+        // Preavisos editados, distintos del default "7,1".
+        db.execSQL(
+            "INSERT INTO persona (id, nombre, diaHabitual, anioNacimiento, ancla, ultimoSaludoDia, activo, preavisos) " +
+                "VALUES (4, 'Emi', 20, NULL, ${d(2026, 12, 20)}, NULL, 1, '30,7')"
         )
         db.execSQL(
             "INSERT INTO cumple (id, personaId, fechaDia, avisoUltimoDia, saludado, saludadoDia, anulado) " +
@@ -92,6 +107,13 @@ class MigracionTest {
         )
     }
 
+    private val personasEsperadas = listOf(
+        FilaPersona(1, "Ana", 15, 1990, d(2027, 3, 15), d(2026, 3, 16), 1, "7,1"),
+        FilaPersona(2, "Beto", 29, null, d(2027, 2, 28), null, 1, null),
+        FilaPersona(3, "Ñandú", 2, 1985, d(2026, 11, 2), null, 1, null),
+        FilaPersona(4, "Emi", 20, null, d(2026, 12, 20), null, 1, "30,7"),
+    )
+
     private val esperadas = listOf(
         FilaCumple(10, 1, d(2026, 3, 15), d(2026, 3, 15), 1, d(2026, 3, 16), 0),
         FilaCumple(11, 1, d(2027, 3, 15), null, 0, null, 0),
@@ -105,24 +127,23 @@ class MigracionTest {
         val db = helper.runMigrationsAndValidate(NOMBRE, 2, true, MIGRACION_1_2)
 
         db.query("SELECT * FROM persona ORDER BY id").use { c ->
-            assertEquals(2, c.count)
-            c.moveToNext()
-            assertEquals(1L, c.getLong(c.getColumnIndexOrThrow("id")))
-            assertEquals("Ana", c.getString(c.getColumnIndexOrThrow("nombre")))
-            assertEquals(15, c.getInt(c.getColumnIndexOrThrow("diaHabitual")))
-            assertEquals(1990, c.intONull("anioNacimiento"))
-            assertEquals(d(2027, 3, 15), c.getInt(c.getColumnIndexOrThrow("ancla")))
-            assertEquals(d(2026, 3, 16), c.intONull("ultimoSaludoDia"))
-            assertEquals(1, c.getInt(c.getColumnIndexOrThrow("activo")))
-            assertEquals("7,1", c.getString(c.getColumnIndexOrThrow("preavisos")))
-            c.moveToNext()
-            assertEquals(2L, c.getLong(c.getColumnIndexOrThrow("id")))
-            assertEquals("Beto", c.getString(c.getColumnIndexOrThrow("nombre")))
-            assertEquals(29, c.getInt(c.getColumnIndexOrThrow("diaHabitual")))
-            assertNull(c.intONull("anioNacimiento"))
-            assertEquals(d(2027, 2, 28), c.getInt(c.getColumnIndexOrThrow("ancla")))
-            assertNull(c.intONull("ultimoSaludoDia"))
-            assertTrue(c.isNull(c.getColumnIndexOrThrow("preavisos")))
+            val leidas = buildList {
+                while (c.moveToNext()) {
+                    add(
+                        FilaPersona(
+                            c.getLong(c.getColumnIndexOrThrow("id")),
+                            c.getString(c.getColumnIndexOrThrow("nombre")),
+                            c.getInt(c.getColumnIndexOrThrow("diaHabitual")),
+                            c.intONull("anioNacimiento"),
+                            c.getInt(c.getColumnIndexOrThrow("ancla")),
+                            c.intONull("ultimoSaludoDia"),
+                            c.getInt(c.getColumnIndexOrThrow("activo")),
+                            c.getColumnIndexOrThrow("preavisos").let { if (c.isNull(it)) null else c.getString(it) },
+                        )
+                    )
+                }
+            }
+            assertEquals(personasEsperadas, leidas)
         }
 
         db.query("SELECT * FROM cumple ORDER BY id").use { c ->
