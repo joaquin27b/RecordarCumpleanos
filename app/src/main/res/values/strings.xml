@@ -41,15 +41,11 @@
 
     <string name="alta_titulo">New birthday</string>
     <string name="alta_nombre">Name</string>
-    <string name="alta_fecha">Date of birth</string>
-    <string name="alta_elegir_fecha">Pick a date</string>
-    <string name="alta_sin_anio">I don\'t know the year</string>
+    <string name="alta_fecha">Birthday day and month</string>
     <string name="alta_sin_anio_desc">Only day and month are saved. No age is shown.</string>
     <string name="alta_preavisos">Remind me before</string>
     <string name="alta_preavisos_desc">It always alerts on the birthday</string>
-    <string name="alta_preaviso_dias">%d days</string>
     <string name="error_nombre_vacio">Enter a name</string>
-    <string name="error_fecha_vacia">Pick a date</string>
 
     <string name="per_titulo">Person</string>
     <string name="per_fecha">Birthday</string>
@@ -105,4 +101,14 @@
     <string name="vacio_cuerpo">Add the first one and I\'ll let you know when the day comes.</string>
     <string name="desc_anterior">Previous</string>
     <string name="desc_siguiente">Next</string>
+    <plurals name="alta_preaviso_dias">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <string name="alta_anio">Year of birth (optional)</string>
+    <string name="alta_no_se_anio">I DON\'T KNOW THE BIRTH YEAR</string>
+    <string name="alta_anio_desconocido">No year: age is neither calculated nor shown.</string>
+    <string name="error_anio_futuro">The year can\'t be in the future</string>
+    <string name="error_anio_invalido">Enter a 4-digit year</string>
+    <string name="error_anio_bisiesto">That year had no February 29</string>
 </resources>

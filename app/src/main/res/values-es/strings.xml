@@ -41,15 +41,11 @@
 
     <string name="alta_titulo">Nuevo cumpleaños</string>
     <string name="alta_nombre">Nombre</string>
-    <string name="alta_fecha">Fecha de nacimiento</string>
-    <string name="alta_elegir_fecha">Elegir fecha</string>
-    <string name="alta_sin_anio">No sé el año</string>
+    <string name="alta_fecha">Día y mes del cumpleaños</string>
     <string name="alta_sin_anio_desc">Se guardan solo el día y el mes. No se muestra la edad.</string>
     <string name="alta_preavisos">Avisarme antes</string>
     <string name="alta_preavisos_desc">El día del cumpleaños avisa siempre</string>
-    <string name="alta_preaviso_dias">%d días</string>
     <string name="error_nombre_vacio">Escribí un nombre</string>
-    <string name="error_fecha_vacia">Elegí una fecha</string>
 
     <string name="per_titulo">Persona</string>
     <string name="per_fecha">Cumpleaños</string>
@@ -105,4 +101,14 @@
     <string name="vacio_cuerpo">Cargá el primero y te aviso cuando llegue el día.</string>
     <string name="desc_anterior">Anterior</string>
     <string name="desc_siguiente">Siguiente</string>
+    <plurals name="alta_preaviso_dias">
+        <item quantity="one">%d día</item>
+        <item quantity="other">%d días</item>
+    </plurals>
+    <string name="alta_anio">Año de nacimiento (opcional)</string>
+    <string name="alta_no_se_anio">NO SÉ EL AÑO DE NACIMIENTO</string>
+    <string name="alta_anio_desconocido">Sin año: no se calcula ni se muestra la edad.</string>
+    <string name="error_anio_futuro">El año no puede ser futuro</string>
+    <string name="error_anio_invalido">Escribí un año de 4 cifras</string>
+    <string name="error_anio_bisiesto">Ese año no tuvo 29 de febrero</string>
 </resources>

@@ -1,70 +1,61 @@
 package com.blair.cumpleanos.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SelectableDates
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.blair.cumpleanos.R
 import com.blair.cumpleanos.datos.Persona
+import com.blair.cumpleanos.dominio.AnioNacimiento
 import com.blair.cumpleanos.dominio.Cadencia
-import com.blair.cumpleanos.dominio.anioDe
 import com.blair.cumpleanos.dominio.mesDe
-import java.time.Instant
+import com.blair.cumpleanos.dominio.validarAnio
+import com.blair.cumpleanos.ui.escena.Escenario
+import com.blair.cumpleanos.ui.escena.Intensidad
+import com.blair.cumpleanos.ui.theme.BlancoEscena
+import com.blair.cumpleanos.ui.theme.CianNeon
+import com.blair.cumpleanos.ui.theme.Dorado
+import com.blair.cumpleanos.ui.theme.NocheMedia
+import com.blair.cumpleanos.ui.theme.RojoCta
 import java.time.LocalDate
-import java.time.YearMonth
-import java.time.ZoneOffset
-
-/** Privadas de archivo: duplicarlas evita acoplar esta hoja a AltaPantalla. */
-private fun aLocalDate(millis: Long): LocalDate =
-    Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
-
-private fun aMillis(f: LocalDate): Long = f.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
 
 /**
- * Reconstruye la fecha editable desde la entidad.
+ * Edicion de una persona en hoja, sobre su propia escena atenuada.
  *
- * diaHabitual es el dia CRUDO: nacido el 29/02 guarda 29 aunque la ocurrencia
- * vigente este clampeada a 28. Se vuelve a clampear solo para mostrarla.
+ * El dia es diaHabitual, el CRUDO: nacido el 29/02 guarda 29 aunque la
+ * ocurrencia de un año no bisiesto este en 28. El mes sale del ancla.
  */
-private fun fechaDe(p: Persona): LocalDate {
-    val anio = p.anioNacimiento ?: anioDe(p.ancla)
-    val ym = YearMonth.of(anio, mesDe(p.ancla))
-    return ym.atDay(minOf(p.diaHabitual, ym.lengthOfMonth()))
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HojaPersona(
@@ -75,120 +66,111 @@ fun HojaPersona(
     onBorrarHistorial: () -> Unit,
     onCerrar: () -> Unit,
 ) {
-    var nombre by remember(persona.id) { mutableStateOf(persona.nombre) }
-    var fecha by remember(persona.id) { mutableStateOf(fechaDe(persona)) }
-    var sinAnio by remember(persona.id) { mutableStateOf(persona.anioNacimiento == null) }
-    var preavisos by remember(persona.id) {
-        mutableStateOf(Cadencia.preavisosEfectivos(persona.preavisos).toSet())
+    val hoy = LocalDate.now()
+    var nombre by rememberSaveable(persona.id) { mutableStateOf(persona.nombre) }
+    var dia by rememberSaveable(persona.id) { mutableIntStateOf(persona.diaHabitual) }
+    var mes by rememberSaveable(persona.id) { mutableIntStateOf(mesDe(persona.ancla)) }
+    var anioTexto by rememberSaveable(persona.id) { mutableStateOf(persona.anioNacimiento?.toString() ?: "") }
+    var sinAnio by rememberSaveable(persona.id) { mutableStateOf(false) }
+    var preavisos by rememberSaveable(persona.id) {
+        mutableStateOf(Cadencia.preavisosEfectivos(persona.preavisos).toList())
     }
-    var abrirPicker by remember { mutableStateOf(false) }
+    var intento by remember { mutableStateOf(false) }
     var confirmarBorrar by remember { mutableStateOf(false) }
     var confirmarHist by remember { mutableStateOf(false) }
-    var errorNombre by remember { mutableStateOf(false) }
 
-    val loc = LocalConfiguration.current.locales[0]
-    val hoy = LocalDate.now()
+    val validacion = validarAnio(if (sinAnio) "" else anioTexto, dia, mes, hoy)
 
-    ModalBottomSheet(onDismissRequest = onCerrar) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .imePadding()
-                // Sin esto el boton de borrar historial queda fuera de pantalla.
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                stringResource(R.string.per_titulo),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-
-            OutlinedTextField(
-                value = nombre,
-                onValueChange = { nombre = it; errorNombre = false },
-                label = { Text(stringResource(R.string.alta_nombre)) },
-                isError = errorNombre,
-                supportingText = { if (errorNombre) Text(stringResource(R.string.error_nombre_vacio)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = sinAnio, onCheckedChange = { sinAnio = it })
-                Spacer(Modifier.padding(horizontal = 6.dp))
-                Column {
-                    Text(stringResource(R.string.alta_sin_anio), style = MaterialTheme.typography.bodyLarge)
+    ModalBottomSheet(
+        onDismissRequest = onCerrar,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = NocheMedia,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = CianNeon.copy(alpha = 0.6f)) },
+    ) {
+        Box {
+            Escenario(Intensidad.ATENUADA, Modifier.matchParentSize())
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    // Sin esto el boton de borrar historial queda fuera de pantalla.
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        stringResource(R.string.alta_sin_anio_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        stringResource(R.string.per_titulo),
+                        color = BlancoEscena,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black,
                     )
+                    Spacer(Modifier.width(10.dp))
+                    DestelloIcono(Dorado, 16.dp)
                 }
-            }
 
-            Text(stringResource(R.string.per_fecha), style = MaterialTheme.typography.titleSmall)
-            OutlinedButton(onClick = { abrirPicker = true }, modifier = Modifier.fillMaxWidth()) {
-                val e = fecha.toEpochDay().toInt()
-                Text(if (sinAnio) fechaLarga(e, loc) else fechaDiaMesAnio(e, loc))
-            }
-
-            if (colision) {
-                Text(
-                    stringResource(R.string.error_colision),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                CampoTexto(
+                    valor = nombre,
+                    onCambio = { nombre = it },
+                    etiqueta = stringResource(R.string.alta_nombre),
+                    error = if (intento && nombre.isBlank()) stringResource(R.string.error_nombre_vacio) else null,
+                    teclado = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                 )
-            }
 
-            Text(stringResource(R.string.alta_preavisos), style = MaterialTheme.typography.titleSmall)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Cadencia.DISPONIBLES.forEach { d ->
-                    FilterChip(
-                        selected = d in preavisos,
-                        onClick = { preavisos = if (d in preavisos) preavisos - d else preavisos + d },
-                        label = { Text(stringResource(R.string.alta_preaviso_dias, d)) },
-                    )
+                Etiqueta(stringResource(R.string.per_fecha))
+                SelectorDiaMes(dia, mes, { d, m -> dia = d; mes = m })
+                if (colision) {
+                    Text(stringResource(R.string.error_colision), color = RojoCta, style = MaterialTheme.typography.bodySmall)
                 }
-            }
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(
-                    onClick = { confirmarBorrar = true },
-                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) { Text(stringResource(R.string.accion_eliminar)) }
+                CampoAnio(
+                    texto = anioTexto,
+                    onTexto = { anioTexto = it },
+                    sinAnio = sinAnio,
+                    onSinAnio = { sinAnio = it },
+                    validacion = validacion,
+                    mostrarError = true,
+                )
 
-                Row {
-                    TextButton(onClick = onCerrar) { Text(stringResource(R.string.accion_cancelar)) }
-                    Spacer(Modifier.padding(horizontal = 4.dp))
-                    Button(onClick = {
-                        errorNombre = nombre.isBlank()
-                        if (!errorNombre) {
-                            onGuardar(
-                                persona.copy(
-                                    nombre = nombre.trim(),
-                                    anioNacimiento = if (sinAnio) null else fecha.year,
-                                    preavisos = preavisos.sortedDescending().joinToString(","),
-                                ),
-                                fecha.dayOfMonth,
-                                fecha.monthValue,
-                            )
+                Etiqueta(stringResource(R.string.alta_preavisos))
+                ChipsPreaviso(preavisos.toSet()) { preavisos = it.toList() }
+
+                BotonPrincipal(
+                    stringResource(R.string.accion_guardar),
+                    onClick = {
+                        intento = true
+                        val anio = when (validacion) {
+                            is AnioNacimiento.Valido -> validacion.anio
+                            AnioNacimiento.Desconocido -> null
+                            AnioNacimiento.Invalido, AnioNacimiento.Futuro, AnioNacimiento.SinBisiesto -> return@BotonPrincipal
                         }
-                    }) { Text(stringResource(R.string.accion_guardar)) }
+                        if (nombre.isBlank()) return@BotonPrincipal
+                        onGuardar(
+                            persona.copy(
+                                nombre = nombre.trim(),
+                                anioNacimiento = anio,
+                                preavisos = preavisos.sortedDescending().joinToString(","),
+                            ),
+                            dia,
+                            mes,
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp),
+                )
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(onClick = { confirmarBorrar = true }) {
+                        Text(stringResource(R.string.accion_eliminar), color = RojoCta, fontWeight = FontWeight.Bold)
+                    }
+                    TextButton(onClick = onCerrar) { Text(stringResource(R.string.accion_cancelar), color = CianNeon) }
                 }
+                TextButton(onClick = { confirmarHist = true }) {
+                    Text(stringResource(R.string.per_borrar_hist), color = RojoCta)
+                }
+                Spacer(Modifier.height(24.dp))
             }
-
-            TextButton(
-                onClick = { confirmarHist = true },
-                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error,
-                ),
-            ) { Text(stringResource(R.string.per_borrar_hist)) }
-
-            Spacer(Modifier.height(24.dp))
         }
     }
 
@@ -199,13 +181,11 @@ fun HojaPersona(
             text = { Text(stringResource(R.string.per_borrar_cuerpo)) },
             confirmButton = {
                 TextButton(onClick = { confirmarBorrar = false; onEliminar() }) {
-                    Text(stringResource(R.string.accion_eliminar))
+                    Text(stringResource(R.string.accion_eliminar), color = RojoCta, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmarBorrar = false }) {
-                    Text(stringResource(R.string.accion_cancelar))
-                }
+                TextButton(onClick = { confirmarBorrar = false }) { Text(stringResource(R.string.accion_cancelar)) }
             },
         )
     }
@@ -217,45 +197,12 @@ fun HojaPersona(
             text = { Text(stringResource(R.string.per_borrar_hist_cuerpo, persona.nombre)) },
             confirmButton = {
                 TextButton(onClick = { confirmarHist = false; onBorrarHistorial() }) {
-                    Text(stringResource(R.string.accion_borrar))
+                    Text(stringResource(R.string.accion_borrar), color = RojoCta, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmarHist = false }) {
-                    Text(stringResource(R.string.accion_cancelar))
-                }
+                TextButton(onClick = { confirmarHist = false }) { Text(stringResource(R.string.accion_cancelar)) }
             },
         )
-    }
-
-    if (abrirPicker) {
-        val estado = rememberDatePickerState(
-            initialSelectedDateMillis = aMillis(fecha),
-            initialDisplayedMonthMillis = aMillis(fecha),
-            yearRange = if (sinAnio) hoy.year..(hoy.year + 1) else 1900..hoy.year,
-            selectableDates = object : SelectableDates {
-                override fun isSelectableDate(utcTimeMillis: Long): Boolean =
-                    sinAnio || !aLocalDate(utcTimeMillis).isAfter(hoy)
-
-                override fun isSelectableYear(year: Int): Boolean =
-                    if (sinAnio) year in hoy.year..(hoy.year + 1) else year <= hoy.year
-            },
-        )
-        DatePickerDialog(
-            onDismissRequest = { abrirPicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    estado.selectedDateMillis?.let { fecha = aLocalDate(it) }
-                    abrirPicker = false
-                }) { Text(stringResource(R.string.accion_guardar)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { abrirPicker = false }) {
-                    Text(stringResource(R.string.accion_cancelar))
-                }
-            },
-        ) {
-            DatePicker(state = estado, title = null, showModeToggle = !sinAnio)
-        }
     }
 }
