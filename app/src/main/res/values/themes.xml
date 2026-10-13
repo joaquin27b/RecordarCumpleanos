@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.RecordarCumpleanos" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Fondo de ventana en la noche del escenario: sin esto la ventana parpadea
+         en blanco antes de que Compose pinte. Padre oscuro por el modo unico. -->
+    <style name="Theme.RecordarCumpleanos" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/noche</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
 </resources>

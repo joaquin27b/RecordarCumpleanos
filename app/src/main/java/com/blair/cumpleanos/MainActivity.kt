@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -51,7 +52,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // Barras forzadas a estilo oscuro: con el telefono en modo claro,
+        // enableEdgeToEdge() sin argumentos pinta los iconos oscuros y sobre la
+        // noche del escenario desaparecen.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         pedirPermisoNotificaciones()
         // Solo debug: cmd jobscheduler run -f no saltea el initialDelay de WorkManager.
         // adb shell am start -n com.blair.cumpleanos/.MainActivity --ez tick true
