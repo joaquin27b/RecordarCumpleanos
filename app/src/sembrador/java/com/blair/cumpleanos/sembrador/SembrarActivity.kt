@@ -54,6 +54,18 @@ class SembrarActivity : Activity() {
         Fija("Paula", 30, 7, 1993, "Un vinilo"),
     )
 
+    /** Capturas de la ficha en ingles: regalos y "Abuela" traducidos; los nombres quedan. */
+    private val enIngles = mapOf(
+        "Un libro de Cortázar" to "A Cortázar novel",
+        "Una cafetera italiana de las grandes y café de especialidad" to "A big moka pot and some specialty coffee",
+        "Auriculares" to "Headphones",
+        "Entradas para el recital de diciembre" to "Tickets for the December concert",
+        "Una planta" to "A plant",
+        "Flores y una torta de ricota" to "Flowers and a ricotta cake",
+        "Un vinilo" to "A vinyl record",
+        "Abuela Teresa" to "Grandma Teresa",
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // --ez tick true: corre el tick ya, para ver los avisos sin esperar a las 9.
@@ -64,10 +76,12 @@ class SembrarActivity : Activity() {
         }
         val repo = (application as CumpleanosApp).repo
         val hoy = LocalDate.now().toEpochDay().toInt()
+        val espanol = resources.configuration.locales[0].language == "es"
+        fun t(texto: String?) = if (espanol || texto == null) texto else enIngles[texto] ?: texto
         CoroutineScope(Dispatchers.IO).launch {
             fijas.forEach { f ->
                 val festejo = f.festejo?.let { (d, m) -> LocalDate.now().withMonth(m).withDayOfMonth(d).toEpochDay().toInt() }
-                repo.crear(f.nombre, f.dia, f.mes, f.anio, f.preavisos, hoy - f.cargadaHace, f.regalo, festejo)
+                repo.crear(t(f.nombre)!!, f.dia, f.mes, f.anio, f.preavisos, hoy - f.cargadaHace, t(f.regalo), festejo)
             }
             Log.i("Sembrador", "sembradas ${fijas.size}")
             runOnUiThread { finish() }

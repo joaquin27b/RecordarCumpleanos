@@ -71,9 +71,19 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Antes de super: el splash del sistema muestra solo la noche del
-        // escenario y le pasa la posta a SplashPantalla sin corte de color.
-        installSplashScreen()
+        // Antes de super: el splash del sistema muestra el icono sobre la noche
+        // del escenario. Sale con un fundido corto, achicandose: tiene que irse
+        // antes de los 250 ms en que Velita empieza a crecer en SplashPantalla,
+        // o por un instante hay dos Velitas.
+        installSplashScreen().setOnExitAnimationListener { salida ->
+            salida.view.animate()
+                .alpha(0f)
+                .scaleX(0.85f)
+                .scaleY(0.85f)
+                .setDuration(150)
+                .withEndAction { salida.remove() }
+                .start()
+        }
         super.onCreate(savedInstanceState)
         // Barras forzadas a estilo oscuro: con el telefono en modo claro,
         // enableEdgeToEdge() sin argumentos pinta los iconos oscuros y sobre la

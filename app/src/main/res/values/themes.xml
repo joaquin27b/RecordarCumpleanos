@@ -8,12 +8,12 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
-    <!-- Splash del sistema: solo la noche del escenario, sin icono. El show
-         completo lo hace SplashPantalla en Compose, sobre el mismo color. -->
+    <!-- Splash del sistema: la noche del escenario con el icono adaptativo real
+         (Velita sobre el violeta). Se desvanece al pasarle la posta a
+         SplashPantalla, que hace entrar a Velita sobre el mismo color. -->
     <style name="Theme.RecordarCumpleanos.Arranque" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/noche</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/arranque_vacio</item>
-        <item name="windowSplashScreenIconBackgroundColor">@color/noche</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
         <item name="postSplashScreenTheme">@style/Theme.RecordarCumpleanos</item>
     </style>
 </resources>
