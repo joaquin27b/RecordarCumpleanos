@@ -1,6 +1,7 @@
 package com.blair.cumpleanos.ui
 
 import android.app.Activity
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -29,15 +30,23 @@ fun BannerAdaptativo(modifier: Modifier = Modifier) {
         activity.resources.displayMetrics.density).toInt()
     val tam = AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(ctx, ancho)
 
+    // navigationBarsPadding ANTES de height: al reves, el padding se
+    // descuenta del alto del AdView en vez de sumarse por fuera.
+    val lugar = modifier
+        .fillMaxWidth()
+        .navigationBarsPadding()
+        .height(tam.height.dp)
+
+    // Solo el build medicion: mismo hueco, sin pedir anuncio.
+    if (!BuildConfig.PEDIR_ANUNCIO) {
+        Spacer(lugar)
+        return
+    }
+
     // Altura RESERVADA: sin ella AndroidView le pasa al AdView constraints de 0
     // y el creative carga pero nunca se pinta.
     AndroidView(
-        modifier = modifier
-            .fillMaxWidth()
-            // navigationBarsPadding ANTES de height: al reves, el padding se
-            // descuenta del alto del AdView en vez de sumarse por fuera.
-            .navigationBarsPadding()
-            .height(tam.height.dp),
+        modifier = lugar,
         factory = {
             AdView(it).apply {
                 setAdSize(tam)

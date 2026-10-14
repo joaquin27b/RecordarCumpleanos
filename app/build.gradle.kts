@@ -24,6 +24,7 @@ android {
         targetSdk = 37
         versionCode = 2
         versionName = "1.1.0"
+        buildConfigField("boolean", "PEDIR_ANUNCIO", "true")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -68,6 +69,8 @@ android {
             versionNameSuffix = "-medicion"
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
+            // Capturas de la ficha: la franja queda, vacia; "Anuncio de prueba" no.
+            buildConfigField("boolean", "PEDIR_ANUNCIO", "false")
             buildConfigField("String", "AD_UNIT_BANNER", "\"ca-app-pub-3940256099942544/9214589741\"")
             manifestPlaceholders["adAppId"] = "ca-app-pub-3940256099942544~3347511713"
         }
