@@ -114,7 +114,11 @@ private class Estrella(val centro: Offset, val r: Float, val color: Color, val h
 private class Luz(val centro: Offset, val color: Color, val halo: Brush)
 
 /** Todo lo que depende del tamaño, armado una vez. El draw solo recorre listas. */
-private class Geometria(size: Size, d: Density, piso: Offset) {
+private class Geometria(size: Size, d: Density, piso: Offset, despejarFraccion: Rect?) {
+    /** Zona en px donde no se dibujan estrellas ni confeti. null = ninguna. */
+    val despejar: Rect? = despejarFraccion?.let {
+        Rect(it.left * size.width, it.top * size.height, it.right * size.width, it.bottom * size.height)
+    }
     val base: Brush
     val origenHaces: Offset
     val haces: List<Haz>
@@ -373,6 +377,8 @@ private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
  *
  * @param piso donde apoya la mascota; ancla el piso iluminado y el cenital.
  * @param encendido 0..1, haces que se prenden uno por uno en el splash.
+ * @param despejar zona en fraccion del tamaño sin estrellas ni confeti, para
+ *   poner texto encima (el grafico de funcion de Play). null en la app.
  */
 @Composable
 fun Escenario(
@@ -380,6 +386,7 @@ fun Escenario(
     modifier: Modifier = Modifier,
     piso: Offset = PISO_ESCENARIO,
     encendido: () -> Float = { 1f },
+    despejar: Rect? = null,
 ) {
     val completa = intensidad == Intensidad.COMPLETA
     // La transicion no es un corte: la lista baja a atenuada y el vacio la levanta.
@@ -405,7 +412,7 @@ fun Escenario(
             .fillMaxSize()
             .graphicsLayer()
             .drawWithCache {
-                val g = Geometria(size, this, piso)
+                val g = Geometria(size, this, piso, despejar)
                 onDrawBehind { pintar(g, nivel, vaiven.value, encendido().coerceIn(0f, 1f)) }
             },
     )
@@ -431,11 +438,13 @@ private fun DrawScope.pintar(g: Geometria, nivel: Float, vaiven: Float, encendid
     }
 
     g.estrellas.forEachIndexed { i, e ->
+        if (g.despejar?.contains(e.centro) == true) return@forEachIndexed
         val a = if (i < ESTRELLAS_ATENUADA) lerp(ALFA_ESTRELLA_ATENUADA, 1f, nivel) else nivel
         destello(e.trazo, e.centro, e.r, e.color, a, e.halo)
     }
 
     g.confeti.forEachIndexed { i, p ->
+        if (g.despejar?.contains(p.centro) == true) return@forEachIndexed
         val a = if (i < CONFETI_ATENUADA) lerp(ALFA_CONFETI_ATENUADO, p.alfa, nivel) else p.alfa * nivel
         if (a > 0.004f) pieza(p, a)
     }
