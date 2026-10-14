@@ -115,6 +115,8 @@ private fun locale(): Locale = LocalConfiguration.current.locales[0]
  */
 @Composable
 fun ListaPantalla(
+    /** Cumpleaños del mes calendario, saludados o no. 0 = sin pildora. */
+    cumplesDelMes: Int,
     pasados: List<FilaCumple>,
     proximos: List<FilaLista>,
     personas: List<Persona>,
@@ -179,7 +181,7 @@ fun ListaPantalla(
         itemsIndexed(items, key = { _, it -> it.clave }) { i, item ->
             val anim = Modifier.entrada(item.clave, i, vistos, inicio)
             when (item) {
-                Item.Cabecera -> Cabecera(anim)
+                Item.Cabecera -> Cabecera(cumplesDelMes, loc, anim)
                 is Item.Seccion -> EncabezadoSeccion(
                     stringResource(item.texto) + if (item.clave == "secPersonas") " (${personas.size})" else "",
                     item.color,
@@ -321,31 +323,69 @@ fun ListaPantalla(
 fun esVacio(pasados: List<FilaCumple>, proximos: List<FilaLista>, personas: List<Persona>): Boolean =
     personas.isEmpty() && pasados.isEmpty() && proximos.isEmpty()
 
-/** Cabecera en marquesina: Velita al lado del titulo de marca y el lema. */
+/** Velita de la cabecera: mas alta que la marquesina, la rompe por arriba. */
+private val ALTO_VELITA_CABECERA = 106.dp
+
+/** Ancho que sale del aspecto de Velita (100 x 160 unidades). */
+private val ANCHO_VELITA_CABECERA = ALTO_VELITA_CABECERA * 0.625f
+
+/** Cuanto sobresale Velita del borde neon: por arriba y por la izquierda. */
+private val DESBORDE_ARRIBA = 30.dp
+private val DESBORDE_IZQUIERDA = 8.dp
+
+/**
+ * Cabecera en marquesina: Velita rompiendo el marco, titulo, lema y cuantos
+ * cumplen este mes.
+ *
+ * Velita va AFUERA de la Marquesina, hermana y no hija: la marquesina clipea a
+ * sus hijos para el fondo redondeado. El padding de arriba reserva el desborde:
+ * sin el, la LazyColumn la corta contra su borde, bajo la barra de estado.
+ */
 @Composable
-private fun Cabecera(modifier: Modifier) {
-    Marquesina(modifier.padding(top = 12.dp, bottom = 4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            // Alto y no ancho: Velita marca la altura de toda la marquesina.
-            Velita(Modifier.height(64.dp))
-            Spacer(Modifier.width(12.dp))
-            Column {
-                TituloCromado(
-                    texto = stringResource(R.string.marca),
-                    tamano = 19.sp,
-                    resplandor = false,
-                    extrusion = 2,
-                    alineacion = Alignment.Start,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    stringResource(R.string.marca_lema),
-                    color = Dorado,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                )
+private fun Cabecera(cumplesDelMes: Int, loc: Locale, modifier: Modifier) {
+    Box(modifier.padding(top = 12.dp + DESBORDE_ARRIBA, bottom = 4.dp)) {
+        Marquesina {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Lugar de Velita dentro del marco: su ancho menos lo que sale
+                // por la izquierda y el padding de la marquesina, mas aire.
+                Spacer(Modifier.width(ANCHO_VELITA_CABECERA - DESBORDE_IZQUIERDA - 10.dp + 8.dp))
+                Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TituloCromado(
+                            texto = stringResource(R.string.marca),
+                            tamano = 19.sp,
+                            resplandor = false,
+                            extrusion = 2,
+                            alineacion = Alignment.Start,
+                        )
+                        Spacer(Modifier.weight(1f))
+                        // Informativo: en 0 no se muestra, una pildora vacia es ruido.
+                        if (cumplesDelMes > 0) {
+                            Pildora(
+                                pluralStringResource(
+                                    R.plurals.cumples_del_mes, cumplesDelMes,
+                                    cumplesDelMes, nombreMesSolo(YearMonth.now(), loc),
+                                ),
+                                TipoPildora.DORADA,
+                                modifier = Modifier.padding(start = 8.dp),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        stringResource(R.string.marca_lema),
+                        color = Dorado,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                }
             }
         }
+        Velita(
+            Modifier
+                .height(ALTO_VELITA_CABECERA)
+                .offset(x = -DESBORDE_IZQUIERDA, y = -DESBORDE_ARRIBA),
+        )
     }
 }
 
@@ -430,6 +470,10 @@ private fun TarjetaCumple(
                         ?: stringResource(R.string.regalo_tocar),
                     apagada = f.c.regaloPlan == null,
                 )
+                // El mismo dia del cumple es redundante: no va como linea aparte.
+                f.c.fechaFestejoDia?.takeIf { it != f.c.fechaDia }?.let {
+                    LineaFestejo(stringResource(R.string.festejo_linea, fechaConDia(it, loc)))
+                }
                 Spacer(Modifier.height(2.dp))
                 PildoraDeEstado(f)
             }
@@ -583,6 +627,27 @@ private fun TarjetaSaludo(c: CumpleUi, loc: Locale, onEditarRegalo: () -> Unit, 
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LineaFestejo(texto: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            painterResource(R.drawable.ic_festejo),
+            contentDescription = null,
+            tint = HazFucsia,
+            modifier = Modifier.size(15.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            texto,
+            color = BlancoEscena,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

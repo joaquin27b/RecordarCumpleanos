@@ -35,6 +35,7 @@ class Repositorio(private val db: BaseDatos) {
         preavisos: String?,
         hoy: Int,
         regaloPlan: String? = null,
+        fechaFestejoDia: Int? = null,
     ): Long =
         db.withTransaction {
             val primera = proximaOcurrencia(dia, mes, hoy)
@@ -47,7 +48,9 @@ class Repositorio(private val db: BaseDatos) {
                     preavisos = preavisos,
                 )
             )
-            cumples.insertar(Cumple(personaId = id, fechaDia = primera, regaloPlan = regalo(regaloPlan)))
+            cumples.insertar(
+                Cumple(personaId = id, fechaDia = primera, regaloPlan = regalo(regaloPlan), fechaFestejoDia = fechaFestejoDia)
+            )
             id
         }
 
@@ -93,6 +96,14 @@ class Repositorio(private val db: BaseDatos) {
         db.withTransaction {
             val abierta = cumples.abiertosDe(personaId).minByOrNull { it.fechaDia } ?: return@withTransaction
             cumples.anotarRegaloPlan(abierta.id, regalo(texto))
+        }
+    }
+
+    /** El festejo, como el regalo pensado, va en la ocurrencia pendiente mas proxima. null = sin festejo aparte. */
+    suspend fun anotarFestejo(personaId: Long, dia: Int?) {
+        db.withTransaction {
+            val abierta = cumples.abiertosDe(personaId).minByOrNull { it.fechaDia } ?: return@withTransaction
+            cumples.anotarFestejo(abierta.id, dia)
         }
     }
 

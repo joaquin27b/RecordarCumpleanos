@@ -131,4 +131,14 @@
     <string name="marca_lema">Never miss a birthday</string>
     <string name="persona_sin_anio">no year</string>
     <string name="regalo_tocar">No gift noted · tap to add</string>
+    <string name="festejo_linea">Party: %1$s</string>
+    <string name="festejo_etiqueta">Celebrating on another day? (optional)</string>
+    <string name="festejo_titulo">Party date</string>
+    <string name="festejo_quitar">Remove the party date</string>
+    <string name="notif_festeja_hoy">%1$s celebrates TODAY</string>
+    <string name="notif_festeja_manana">%1$s celebrates TOMORROW, %2$s</string>
+    <plurals name="cumples_del_mes">
+        <item quantity="one">%1$d birthday in %2$s</item>
+        <item quantity="other">%1$d birthdays in %2$s</item>
+    </plurals>
 </resources>

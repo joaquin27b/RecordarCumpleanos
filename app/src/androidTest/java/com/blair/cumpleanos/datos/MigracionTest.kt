@@ -30,7 +30,7 @@ private const val NOMBRE = "migracion-test.db"
 
 private fun d(a: Int, m: Int, dd: Int) = LocalDate.of(a, m, dd).toEpochDay().toInt()
 
-/** Una fila de cumple como la dejo la v1, mas las dos columnas nuevas. */
+/** Una fila de cumple como la dejo la v1; las tres columnas nuevas se chequean aparte, en NULL. */
 private data class FilaCumple(
     val id: Long, val personaId: Long, val fechaDia: Int, val avisoUltimoDia: Int?,
     val saludado: Int, val saludadoDia: Int?, val anulado: Int,
@@ -162,6 +162,7 @@ class MigracionTest {
                     )
                     assertTrue(c.isNull(c.getColumnIndexOrThrow("regaloPlan")))
                     assertTrue(c.isNull(c.getColumnIndexOrThrow("regaloReal")))
+                    assertTrue(c.isNull(c.getColumnIndexOrThrow("fechaFestejoDia")))
                 }
             }
             assertEquals(esperadas, leidas)
@@ -174,6 +175,7 @@ class MigracionTest {
         helper.createDatabase(NOMBRE, 1).use {
             sembrarV1(it)
             it.execSQL("ALTER TABLE `cumple` ADD COLUMN `regaloPlan` TEXT")
+            it.execSQL("ALTER TABLE `cumple` ADD COLUMN `fechaFestejoDia` INTEGER")
         }
         helper.runMigrationsAndValidate(NOMBRE, 2, true, MIGRACION_1_2).close()
     }

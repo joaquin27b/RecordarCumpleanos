@@ -84,6 +84,12 @@ class ListaViewModel(
 
     val personas: StateFlow<List<Persona>> = db.personaDao().activas().estado()
 
+    /** Cumpleaños del mes calendario, saludados o no: informativo, no pendientes. */
+    val cumplesDelMes: StateFlow<Int> = YearMonth.now().let { ym ->
+        db.cumpleDao().cantidadEntre(ym.atDay(1).toEpochDay().toInt(), ym.atEndOfMonth().toEpochDay().toInt())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    }
+
     /** Para el selector de borrado: quien tiene historial y cuanto. */
     val conHistorial: StateFlow<List<PersonaConHistorial>> = db.cumpleDao().conHistorial().estado()
 
@@ -123,8 +129,9 @@ class ListaViewModel(
 
     fun alternarPorAnio(anual: Boolean) { _porAnio.value = anual }
 
-    fun crear(nombre: String, dia: Int, mes: Int, anioNacimiento: Int?, preavisos: String?, regaloPlan: String?) =
-        lanzar { repo.crear(nombre, dia, mes, anioNacimiento, preavisos, hoy(), regaloPlan) }
+    fun crear(
+        nombre: String, dia: Int, mes: Int, anioNacimiento: Int?, preavisos: String?, regaloPlan: String?, festejo: Int?,
+    ) = lanzar { repo.crear(nombre, dia, mes, anioNacimiento, preavisos, hoy(), regaloPlan, festejo) }
 
     fun saludar(personaId: Long, cumpleId: Long, regaloReal: String?) =
         lanzar { repo.saludar(personaId, cumpleId, hoy(), regaloReal) }
@@ -144,12 +151,15 @@ class ListaViewModel(
     private val _colision = MutableStateFlow(false)
     val colision: StateFlow<Boolean> = _colision
 
-    fun editarPersona(persona: Persona, nuevoDia: Int?, nuevoMes: Int?, regaloPlan: String?, alCerrar: () -> Unit) {
+    fun editarPersona(
+        persona: Persona, nuevoDia: Int?, nuevoMes: Int?, regaloPlan: String?, festejo: Int?, alCerrar: () -> Unit,
+    ) {
         viewModelScope.launch {
             when (repo.editarPersona(persona, nuevoDia, nuevoMes, hoy())) {
                 Movida.Ok -> {
                     // Despues de mover: el plan va a la ocurrencia ya en su fecha nueva.
                     repo.anotarRegaloPlan(persona.id, regaloPlan)
+                    repo.anotarFestejo(persona.id, festejo)
                     alCerrar()
                 }
                 Movida.Colision -> _colision.value = true

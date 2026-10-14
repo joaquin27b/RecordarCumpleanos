@@ -129,4 +129,14 @@
     <string name="marca_lema">Que ningún cumple se te pase</string>
     <string name="persona_sin_anio">sin año</string>
     <string name="regalo_tocar">Sin regalo anotado · tocá para anotar</string>
+    <string name="festejo_linea">Festejo: %1$s</string>
+    <string name="festejo_etiqueta">¿Lo festeja otro día? (opcional)</string>
+    <string name="festejo_titulo">Fecha del festejo</string>
+    <string name="festejo_quitar">Quitar la fecha del festejo</string>
+    <string name="notif_festeja_hoy">%1$s festeja HOY</string>
+    <string name="notif_festeja_manana">%1$s festeja MAÑANA, %2$s</string>
+    <plurals name="cumples_del_mes">
+        <item quantity="one">%1$d cumpleaños en %2$s</item>
+        <item quantity="other">%1$d cumpleaños en %2$s</item>
+    </plurals>
 </resources>

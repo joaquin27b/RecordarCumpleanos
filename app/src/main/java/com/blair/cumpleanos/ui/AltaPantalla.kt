@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.blair.cumpleanos.R
 import com.blair.cumpleanos.dominio.AnioNacimiento
 import com.blair.cumpleanos.dominio.Cadencia
+import com.blair.cumpleanos.dominio.proximaOcurrencia
 import com.blair.cumpleanos.dominio.validarAnio
 import com.blair.cumpleanos.ui.theme.BlancoEscena
 import com.blair.cumpleanos.ui.theme.CianNeon
@@ -50,7 +51,9 @@ import java.time.LocalDate
  */
 @Composable
 fun AltaPantalla(
-    onGuardar: (nombre: String, dia: Int, mes: Int, anioNacimiento: Int?, preavisos: String?, regaloPlan: String?) -> Unit,
+    onGuardar: (
+        nombre: String, dia: Int, mes: Int, anioNacimiento: Int?, preavisos: String?, regaloPlan: String?, festejo: Int?,
+    ) -> Unit,
     onCancelar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -64,6 +67,7 @@ fun AltaPantalla(
     var sinAnio by rememberSaveable { mutableStateOf(false) }
     var preavisos by rememberSaveable { mutableStateOf(Cadencia.POR_DEFECTO.toList()) }
     var regaloPlan by rememberSaveable { mutableStateOf("") }
+    var festejo by rememberSaveable { mutableStateOf<Int?>(null) }
     var intento by rememberSaveable { mutableStateOf(false) }
 
     val validacion = validarAnio(if (sinAnio) "" else anioTexto, dia, mes, hoy)
@@ -107,6 +111,7 @@ fun AltaPantalla(
         )
 
         CampoRegalo(regaloPlan, { regaloPlan = it }, stringResource(R.string.regalo_plan_etiqueta))
+        CampoFestejo(festejo, { festejo = it }, sugerida = proximaOcurrencia(dia, mes, hoy.toEpochDay().toInt()))
 
         Etiqueta(stringResource(R.string.alta_preavisos))
         Text(stringResource(R.string.alta_preavisos_desc), color = TextoSecundario, style = MaterialTheme.typography.bodySmall)
@@ -130,7 +135,7 @@ fun AltaPantalla(
                         AnioNacimiento.Invalido, AnioNacimiento.Futuro, AnioNacimiento.SinBisiesto -> return@BotonPrincipal
                     }
                     if (nombre.isBlank()) return@BotonPrincipal
-                    onGuardar(nombre.trim(), dia, mes, anio, preavisos.sortedDescending().joinToString(","), regaloPlan)
+                    onGuardar(nombre.trim(), dia, mes, anio, preavisos.sortedDescending().joinToString(","), regaloPlan, festejo)
                 },
                 modifier = Modifier.weight(1f),
             )

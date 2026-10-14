@@ -25,7 +25,12 @@ data class CumpleUi(
     /** null = sin regalo anotado (todas las filas de la v1). */
     val regaloPlan: String?,
     val regaloReal: String?,
+    /** null = sin festejo aparte (todas las filas de la v1). */
+    val fechaFestejoDia: Int?,
 )
+
+/** Un festejo a avisar: quien y cuando. */
+data class FestejoUi(val cumpleId: Long, val personaId: Long, val nombre: String, val fechaDia: Int, val fechaFestejoDia: Int)
 
 @Dao
 interface PersonaDao {
@@ -65,7 +70,7 @@ interface CumpleDao {
     /** PROXIMOS: todo lo no saludado de personas activas. */
     @Query(
         """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
-                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal
+                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal, c.fechaFestejoDia
            FROM cumple c JOIN persona p ON p.id = c.personaId
            WHERE c.saludado = 0 AND p.activo = 1
            ORDER BY c.fechaDia"""
@@ -75,7 +80,7 @@ interface CumpleDao {
     /** Version suspend de abiertos(), para el worker. */
     @Query(
         """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
-                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal
+                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal, c.fechaFestejoDia
            FROM cumple c JOIN persona p ON p.id = c.personaId
            WHERE c.saludado = 0 AND p.activo = 1
            ORDER BY c.fechaDia"""
@@ -85,7 +90,7 @@ interface CumpleDao {
     /** HISTORIAL: saludados en un rango, por fecha de saludo. Incluye personas eliminadas. */
     @Query(
         """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
-                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal
+                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal, c.fechaFestejoDia
            FROM cumple c JOIN persona p ON p.id = c.personaId
            WHERE c.saludadoDia IS NOT NULL AND c.saludadoDia BETWEEN :desde AND :hasta
            ORDER BY c.saludadoDia DESC"""
@@ -127,6 +132,28 @@ interface CumpleDao {
 
     @Query("UPDATE cumple SET regaloReal = :texto WHERE id = :id")
     suspend fun anotarRegaloReal(id: Long, texto: String?)
+
+    @Query("UPDATE cumple SET fechaFestejoDia = :dia WHERE id = :id")
+    suspend fun anotarFestejo(id: Long, dia: Int?)
+
+    /**
+     * Festejos entre dos dias, saludado o no: se saluda el martes y se festeja
+     * el sabado. El que cae el mismo dia del cumple no entra: gana el aviso del cumple.
+     */
+    @Query(
+        """SELECT c.id AS cumpleId, c.personaId, p.nombre, c.fechaDia, c.fechaFestejoDia
+           FROM cumple c JOIN persona p ON p.id = c.personaId
+           WHERE p.activo = 1 AND c.fechaFestejoDia BETWEEN :desde AND :hasta
+             AND c.fechaFestejoDia <> c.fechaDia"""
+    )
+    suspend fun festejosEntre(desde: Int, hasta: Int): List<FestejoUi>
+
+    /** Ocurrencias de personas activas en un rango, saludadas o no: el contador del mes. */
+    @Query(
+        """SELECT COUNT(*) FROM cumple c JOIN persona p ON p.id = c.personaId
+           WHERE p.activo = 1 AND c.fechaDia BETWEEN :desde AND :hasta"""
+    )
+    fun cantidadEntre(desde: Int, hasta: Int): Flow<Int>
 
     @Query("UPDATE cumple SET avisoUltimoDia = :dia WHERE id = :id")
     suspend fun marcarAviso(id: Long, dia: Int)

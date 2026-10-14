@@ -1,6 +1,25 @@
 package com.blair.cumpleanos.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.Role
+import com.blair.cumpleanos.ui.theme.Escenario1
+import com.blair.cumpleanos.ui.theme.EscenarioBorde
+import com.blair.cumpleanos.ui.theme.HazFucsia
+import java.time.LocalDate
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,6 +60,81 @@ import com.blair.cumpleanos.ui.theme.CianNeon
 import com.blair.cumpleanos.ui.theme.Dorado
 import com.blair.cumpleanos.ui.theme.NocheMedia
 import com.blair.cumpleanos.ui.theme.TextoSecundario
+
+private const val DIA_MS = 86_400_000L
+
+/**
+ * Fecha del festejo, opcional, con su icono. Vacio = sin festejo aparte.
+ *
+ * El calendario abre en la fecha cargada o, si no hay, en la del cumple: lo
+ * comun es mover el festejo unos dias. No deja elegir dias pasados.
+ *
+ * @param sugerida epochDay donde abre el calendario sin fecha cargada.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CampoFestejo(fecha: Int?, onCambio: (Int?) -> Unit, sugerida: Int) {
+    val loc = LocalConfiguration.current.locales[0]
+    var abierto by rememberSaveable { mutableStateOf(false) }
+    val forma = RoundedCornerShape(18.dp)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(painterResource(R.drawable.ic_festejo), contentDescription = null, tint = HazFucsia, modifier = Modifier.size(26.dp))
+        Spacer(Modifier.width(10.dp))
+        Row(
+            Modifier
+                .weight(1f)
+                .heightIn(min = 56.dp)
+                .clip(forma)
+                .background(Escenario1.copy(alpha = 0.28f))
+                .border(1.dp, EscenarioBorde.copy(alpha = 0.55f), forma)
+                .clickable(role = Role.Button) { abierto = true }
+                .padding(start = 16.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                fecha?.let { stringResource(R.string.festejo_linea, fechaConDia(it, loc)) }
+                    ?: stringResource(R.string.festejo_etiqueta),
+                color = if (fecha != null) BlancoEscena else TextoSecundario,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 14.dp),
+            )
+            if (fecha != null) {
+                IconButton(onClick = { onCambio(null) }) {
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.festejo_quitar), tint = TextoSecundario)
+                }
+            }
+        }
+    }
+    if (abierto) {
+        val hoyMs = LocalDate.now().toEpochDay() * DIA_MS
+        val estado = rememberDatePickerState(
+            initialSelectedDateMillis = maxOf((fecha ?: sugerida).toLong() * DIA_MS, hoyMs),
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis >= hoyMs
+            },
+        )
+        DatePickerDialog(
+            onDismissRequest = { abierto = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    // El picker trabaja en UTC a medianoche: dividir da el epochDay exacto.
+                    estado.selectedDateMillis?.let { onCambio((it / DIA_MS).toInt()) }
+                    abierto = false
+                }) { Text(stringResource(R.string.accion_guardar), color = CianNeon, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { abierto = false }) { Text(stringResource(R.string.accion_cancelar), color = CianNeon) }
+            },
+        ) {
+            DatePicker(
+                state = estado,
+                title = { Text(stringResource(R.string.festejo_titulo), Modifier.padding(start = 24.dp, top = 16.dp)) },
+            )
+        }
+    }
+}
 
 /** Campo del regalo con su icono. Vacio se guarda como NULL: "sin regalo anotado". */
 @Composable

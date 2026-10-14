@@ -7,11 +7,18 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.blair.cumpleanos.MainActivity
 import com.blair.cumpleanos.R
+import com.blair.cumpleanos.ui.fechaConDia
 import com.blair.cumpleanos.ui.fechaLarga
 import java.util.Locale
 
 /** Id de resumen fuera del rango de personaId para no pisar una notificacion de cumple. */
 private const val ID_RESUMEN = Int.MAX_VALUE
+
+/**
+ * Los festejos viven en su propio espacio de ids: con personaId a secas, el
+ * aviso del festejo pisaria al del cumple de la misma persona.
+ */
+private const val BASE_ID_FESTEJO = 1 shl 30
 
 object Emisor {
 
@@ -32,6 +39,14 @@ object Emisor {
             else -> res.getQuantityString(R.plurals.notif_cumple_en, diasRestantes, nombre, diasRestantes, fechaLarga(fechaDia, loc))
         }
         emitir(ctx, personaId.toInt(), CANAL_CUMPLE, nombre, texto, NotificationCompat.PRIORITY_HIGH)
+    }
+
+    /** "festeja MAÑANA" el dia anterior, "festeja HOY" el dia del festejo. */
+    fun festejo(ctx: Context, personaId: Long, nombre: String, fechaFestejoDia: Int, diasRestantes: Int) {
+        val loc: Locale = ctx.resources.configuration.locales[0]
+        val texto = if (diasRestantes == 0) ctx.getString(R.string.notif_festeja_hoy, nombre)
+        else ctx.getString(R.string.notif_festeja_manana, nombre, fechaConDia(fechaFestejoDia, loc))
+        emitir(ctx, BASE_ID_FESTEJO + personaId.toInt(), CANAL_CUMPLE, nombre, texto, NotificationCompat.PRIORITY_HIGH)
     }
 
     fun resumen(ctx: Context, titulo: String, cuerpo: String) {

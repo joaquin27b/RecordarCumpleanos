@@ -78,10 +78,10 @@ private const val LUCES_PUBLICO = 42
 
 /**
  * Banda de arriba sin estrellas ni confeti de los que quedan en ATENUADA:
- * barra de estado + margen + marquesina (~82 dp) + su halo. Sin ella una
+ * barra de estado + margen + desborde de Velita (30 dp) + marquesina (~82 dp) + su halo. Sin ella una
  * estrella quedaba a caballo del borde de la marquesina, cortada por la barra.
  */
-private const val RESERVA_ARRIBA_DP = 180f
+private const val RESERVA_ARRIBA_DP = 210f
 
 /** Alto holgado de la barra de estado. */
 private const val BARRA_ESTADO_DP = 52f

@@ -56,4 +56,7 @@ data class Cumple(
     val regaloPlan: String? = null,
     /** Lo que se regalo de verdad, confirmado al saludar. null = sin confirmar. */
     val regaloReal: String? = null,
+    /** epochDay del festejo de ESTA ocurrencia, si no es el mismo dia (cumple el
+     *  martes, festeja el sabado). null = sin festejo aparte: no se avisa nada. */
+    val fechaFestejoDia: Int? = null,
 )

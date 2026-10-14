@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "456b77c2f0dc7b72aa63292d0e3cfd7b",
+    "identityHash": "8ef8bc041018c351331c3eda6608f4e9",
     "entities": [
       {
         "tableName": "persona",
@@ -74,7 +74,7 @@
       },
       {
         "tableName": "cumple",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `personaId` INTEGER NOT NULL, `fechaDia` INTEGER NOT NULL, `avisoUltimoDia` INTEGER, `saludado` INTEGER NOT NULL, `saludadoDia` INTEGER, `anulado` INTEGER NOT NULL, `regaloPlan` TEXT, `regaloReal` TEXT, FOREIGN KEY(`personaId`) REFERENCES `persona`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `personaId` INTEGER NOT NULL, `fechaDia` INTEGER NOT NULL, `avisoUltimoDia` INTEGER, `saludado` INTEGER NOT NULL, `saludadoDia` INTEGER, `anulado` INTEGER NOT NULL, `regaloPlan` TEXT, `regaloReal` TEXT, `fechaFestejoDia` INTEGER, FOREIGN KEY(`personaId`) REFERENCES `persona`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -125,6 +125,11 @@
             "fieldPath": "regaloReal",
             "columnName": "regaloReal",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fechaFestejoDia",
+            "columnName": "fechaFestejoDia",
+            "affinity": "INTEGER"
           }
         ],
         "primaryKey": {
@@ -172,7 +177,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '456b77c2f0dc7b72aa63292d0e3cfd7b')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8ef8bc041018c351331c3eda6608f4e9')"
     ]
   }
 }

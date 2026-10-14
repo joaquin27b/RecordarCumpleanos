@@ -31,6 +31,18 @@ object Cadencia {
     }
 }
 
+/**
+ * Aviso de festejo: el dia anterior y el dia mismo, una vez por dia.
+ *
+ * Si el festejo cae el dia del cumple no avisa: gana el aviso del cumple y no
+ * se duplica. Uno que ya paso tampoco.
+ */
+fun avisaFestejo(fechaFestejoDia: Int?, fechaDia: Int, hoy: Int, ultimoAviso: Int?): Boolean {
+    if (fechaFestejoDia == null || fechaFestejoDia == fechaDia) return false
+    if (ultimoAviso == hoy) return false
+    return fechaFestejoDia - hoy in 0..1
+}
+
 /** Dia del mes en que se emite el resumen. */
 const val DIA_RESUMEN = 1
 

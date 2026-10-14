@@ -25,6 +25,10 @@ fun fechaDiaMesAnio(epochDay: Int, locale: Locale): String =
 fun fechaLarga(epochDay: Int, locale: Locale): String =
     fmt("dMMMM", locale).format(LocalDate.ofEpochDay(epochDay.toLong()))
 
+/** Con el dia de la semana: "sábado, 18 de octubre" / "Saturday, October 18". El festejo. */
+fun fechaConDia(epochDay: Int, locale: Locale): String =
+    fmt("EEEEdMMMM", locale).format(LocalDate.ofEpochDay(epochDay.toLong()))
+
 /** "Diciembre 2026" / "December 2026" — cabecera del historial. */
 fun nombreMes(ym: YearMonth, locale: Locale): String =
     fmt("MMMMy", locale).format(ym.atDay(1))

@@ -154,6 +154,7 @@ class MainActivity : ComponentActivity() {
         val colision by vm.colision.collectAsStateWithLifecycle()
         val conHistorial by vm.conHistorial.collectAsStateWithLifecycle()
         val pendientesDePersona by vm.pendientesDePersona.collectAsStateWithLifecycle()
+        val cumplesDelMes by vm.cumplesDelMes.collectAsStateWithLifecycle()
         // Al tocar YA SALUDÉ se abre primero la hoja del regalo; el saludo se
         // guarda recien al confirmar.
         var aSaludar by remember { mutableStateOf<FilaCumple?>(null) }
@@ -178,8 +179,8 @@ class MainActivity : ComponentActivity() {
         ) { innerPadding ->
             if (enAlta) {
                 AltaPantalla(
-                    onGuardar = { nombre, dia, mes, anio, preav, regalo ->
-                        vm.crear(nombre, dia, mes, anio, preav, regalo)
+                    onGuardar = { nombre, dia, mes, anio, preav, regalo, festejo ->
+                        vm.crear(nombre, dia, mes, anio, preav, regalo, festejo)
                         onAlta(false)
                     },
                     onCancelar = { onAlta(false) },
@@ -187,6 +188,7 @@ class MainActivity : ComponentActivity() {
                 )
             } else {
                 ListaPantalla(
+                    cumplesDelMes = cumplesDelMes,
                     pasados = pasados,
                     proximos = proximos,
                     personas = personas,
@@ -212,9 +214,11 @@ class MainActivity : ComponentActivity() {
             HojaPersona(
                 persona = p,
                 regaloPlan = pendientesDePersona.minByOrNull { it.fechaDia }?.regaloPlan,
+                festejo = pendientesDePersona.minByOrNull { it.fechaDia }?.fechaFestejoDia,
+                fechaCumple = pendientesDePersona.minByOrNull { it.fechaDia }?.fechaDia ?: p.ancla,
                 colision = colision,
-                onGuardar = { editada, dia, mes, regalo ->
-                    vm.editarPersona(editada, dia, mes, regalo) { vm.abrirPersona(null) }
+                onGuardar = { editada, dia, mes, regalo, festejo ->
+                    vm.editarPersona(editada, dia, mes, regalo, festejo) { vm.abrirPersona(null) }
                 },
                 onEliminar = { vm.eliminarPersona(p.id); vm.abrirPersona(null) },
                 onBorrarHistorial = { vm.borrarHistorialDe(p.id) },

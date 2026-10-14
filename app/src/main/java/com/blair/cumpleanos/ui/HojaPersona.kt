@@ -62,8 +62,12 @@ fun HojaPersona(
     persona: Persona,
     /** Plan de la ocurrencia pendiente mas proxima. null = sin regalo anotado. */
     regaloPlan: String?,
+    /** Festejo de esa misma ocurrencia. null = sin festejo aparte. */
+    festejo: Int?,
+    /** Fecha de esa ocurrencia: donde abre el calendario del festejo. */
+    fechaCumple: Int,
     colision: Boolean,
-    onGuardar: (persona: Persona, dia: Int, mes: Int, regaloPlan: String?) -> Unit,
+    onGuardar: (persona: Persona, dia: Int, mes: Int, regaloPlan: String?, festejo: Int?) -> Unit,
     onEliminar: () -> Unit,
     onBorrarHistorial: () -> Unit,
     onCerrar: () -> Unit,
@@ -78,6 +82,7 @@ fun HojaPersona(
         mutableStateOf(Cadencia.preavisosEfectivos(persona.preavisos).toList())
     }
     var regalo by rememberSaveable(persona.id, regaloPlan) { mutableStateOf(regaloPlan ?: "") }
+    var fechaFestejo by rememberSaveable(persona.id, festejo) { mutableStateOf(festejo) }
     var intento by remember { mutableStateOf(false) }
     var confirmarBorrar by remember { mutableStateOf(false) }
     var confirmarHist by remember { mutableStateOf(false) }
@@ -136,6 +141,7 @@ fun HojaPersona(
                 )
 
                 CampoRegalo(regalo, { regalo = it }, stringResource(R.string.regalo_plan_etiqueta))
+                CampoFestejo(fechaFestejo, { fechaFestejo = it }, sugerida = fechaCumple)
 
                 Etiqueta(stringResource(R.string.alta_preavisos))
                 ChipsPreaviso(preavisos.toSet()) { preavisos = it.toList() }
@@ -159,6 +165,7 @@ fun HojaPersona(
                             dia,
                             mes,
                             regalo,
+                            fechaFestejo,
                         )
                     },
                     modifier = Modifier

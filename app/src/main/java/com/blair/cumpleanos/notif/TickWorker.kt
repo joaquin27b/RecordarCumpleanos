@@ -10,6 +10,7 @@ import com.blair.cumpleanos.CumpleanosApp
 import com.blair.cumpleanos.R
 import com.blair.cumpleanos.dominio.Cadencia
 import com.blair.cumpleanos.dominio.anioDe
+import com.blair.cumpleanos.dominio.avisaFestejo
 import com.blair.cumpleanos.dominio.avisaResumen
 import com.blair.cumpleanos.dominio.edad
 import com.blair.cumpleanos.dominio.mesDe
@@ -22,6 +23,9 @@ import java.time.YearMonth
 import java.util.concurrent.TimeUnit
 
 private const val CLAVE_RESUMEN = "ultimo_resumen_ym"
+
+/** Ultimo dia avisado por ocurrencia. En prefs y no en la tabla: el schema v2 lleva una sola columna de festejo. */
+private fun claveFestejo(cumpleId: Long) = "festejo_aviso_$cumpleId"
 private const val TRABAJO = "tick"
 private const val HORA_AVISO = 9
 
@@ -43,6 +47,15 @@ class TickWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
                     edad(c.fechaDia, c.anioNacimiento),
                 )
                 dao.marcarAviso(c.id, hoy)
+            }
+        }
+
+        // Festejos de hoy y de mañana, saludados o no: se saluda el martes y se festeja el sabado.
+        dao.festejosEntre(hoy, hoy + 1).forEach { f ->
+            val ultimo = app.prefs.getInt(claveFestejo(f.cumpleId), 0).takeIf { it != 0 }
+            if (avisaFestejo(f.fechaFestejoDia, f.fechaDia, hoy, ultimo)) {
+                Emisor.festejo(applicationContext, f.personaId, f.nombre, f.fechaFestejoDia, f.fechaFestejoDia - hoy)
+                app.prefs.edit().putInt(claveFestejo(f.cumpleId), hoy).apply()
             }
         }
 
