@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Recordar Cumpleaños</string>
+    <string name="app_name">Birthday Reminder</string>
     <!-- Titulo de marca dentro de la app: igual en todos los idiomas. -->
     <string name="marca" translatable="false">RECORDAR CUMPLEAÑOS</string>
 

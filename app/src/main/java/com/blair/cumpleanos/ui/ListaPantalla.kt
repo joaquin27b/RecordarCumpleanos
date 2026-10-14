@@ -75,6 +75,9 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.util.Locale
 
+/** Reserva bajo la ultima fila para el FAB destacado y su glow. */
+private val ALTO_PIE = 150.dp
+
 /** Hasta cuantos dias antes la pildora va dorada. Mas lejos, violeta neutra. */
 private const val DIAS_DESTACADO = 30
 
@@ -208,8 +211,9 @@ fun ListaPantalla(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = anim.padding(vertical = 8.dp, horizontal = 4.dp),
                 )
-                // El FAB y el banner no tapan la ultima fila.
-                Item.Pie -> Spacer(Modifier.height(120.dp))
+                // Al final del scroll el FAB no tapa la ultima fila: 60 de boton,
+                // 20 de glow, 16 de separacion del banner y aire.
+                Item.Pie -> Spacer(Modifier.height(ALTO_PIE))
             }
         }
     }
@@ -322,21 +326,22 @@ fun esVacio(pasados: List<FilaCumple>, proximos: List<FilaLista>, personas: List
 private fun Cabecera(modifier: Modifier) {
     Marquesina(modifier.padding(top = 12.dp, bottom = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            Velita(Modifier.width(70.dp))
-            Spacer(Modifier.width(14.dp))
+            // Alto y no ancho: Velita marca la altura de toda la marquesina.
+            Velita(Modifier.height(64.dp))
+            Spacer(Modifier.width(12.dp))
             Column {
                 TituloCromado(
                     texto = stringResource(R.string.marca),
-                    tamano = 27.sp,
+                    tamano = 19.sp,
                     resplandor = false,
-                    extrusion = 3,
+                    extrusion = 2,
                     alineacion = Alignment.Start,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(2.dp))
                 Text(
                     stringResource(R.string.marca_lema),
                     color = Dorado,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.ExtraBold,
                 )
             }
@@ -465,7 +470,8 @@ private fun TarjetaPersonas(
     onBorrar: (Persona) -> Unit,
     modifier: Modifier,
 ) {
-    Tarjeta(modifier, neon = HazFucsia) {
+    // Compacta: una fila por persona, nombre y fecha; el alto lo pone el texto.
+    Tarjeta(modifier, neon = HazFucsia, relleno = PaddingValues(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)) {
         personas.forEachIndexed { i, p ->
             if (i > 0) HorizontalDivider(color = BlancoEscena.copy(alpha = 0.10f))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -474,7 +480,7 @@ private fun TarjetaPersonas(
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
                         .clickable { onEditar(p.id) }
-                        .padding(vertical = 10.dp, horizontal = 4.dp),
+                        .padding(vertical = 4.dp, horizontal = 4.dp),
                 ) {
                     Text(
                         p.nombre,
@@ -489,7 +495,7 @@ private fun TarjetaPersonas(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                IconButton(onClick = { onBorrar(p) }) {
+                IconButton(onClick = { onBorrar(p) }, modifier = Modifier.size(40.dp)) {
                     Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.accion_eliminar), tint = RojoCta)
                 }
             }

@@ -76,6 +76,19 @@ private const val ESTRELLAS_ATENUADA = 4
 private const val BOKEH = 12
 private const val LUCES_PUBLICO = 42
 
+/**
+ * Banda de arriba sin estrellas ni confeti de los que quedan en ATENUADA:
+ * barra de estado + margen + marquesina (~82 dp) + su halo. Sin ella una
+ * estrella quedaba a caballo del borde de la marquesina, cortada por la barra.
+ */
+private const val RESERVA_ARRIBA_DP = 180f
+
+/** Alto holgado de la barra de estado. */
+private const val BARRA_ESTADO_DP = 52f
+
+/** Margen lateral de la lista: el borde de las tarjetas cae siempre en esta x. */
+private const val BORDE_TARJETA_DP = 16f
+
 /** Alfa de los haces que quedan en ATENUADA: 0.22 * 0.45 = 0.10 de maxima. */
 private const val FACTOR_HAZ_ATENUADO = 0.45f
 private const val ALFA_CONFETI_ATENUADO = 0.40f
@@ -128,6 +141,22 @@ private class Geometria(size: Size, d: Density, piso: Offset) {
         val dp = d.density
         val azar = Random(SEMILLA)
         fun r(a: Float, b: Float) = a + azar.nextFloat() * (b - a)
+
+        // Lo que queda en ATENUADA no puede pisar un contorno: ni el de la
+        // marquesina en reposo ni el borde lateral de las tarjetas. Se corre en
+        // vez de re-sortear, asi el resto de la escena no cambia de lugar.
+        val reserva = RESERVA_ARRIBA_DP * dp
+        val bordeIzq = BORDE_TARJETA_DP * dp
+        val bordeDer = w - BORDE_TARJETA_DP * dp
+        // Ni cruzando el borde ni en la canaleta: ahi cae el halo de la tarjeta
+        // y cualquier cosa parece asomar de atras.
+        // Y con aire: pegada al reborde, a traves de la tarjeta translucida, se lee igual.
+        val aire = 12f * dp
+        fun sinBordes(x: Float, ext: Float): Float = x.coerceIn(bordeIzq + ext + aire, bordeDer - ext - aire)
+        fun bajoReserva(y: Float, ext: Float, desde: Float, hasta: Float): Float {
+            val t = ((y - desde) / (hasta - desde)).coerceIn(0f, 1f)
+            return lerp(reserva + ext, hasta, t)
+        }
 
         base = Brush.radialGradient(
             0f to Resplandor3,
@@ -201,12 +230,20 @@ private class Geometria(size: Size, d: Density, piso: Offset) {
                 else -> r(10f, 20f) * dp
             }
             val alto = if (tipo == 0) r(2.5f, 5f) * dp else ancho
+            val ext = maxOf(ancho, alto) / 2f + 2f * dp
+            val enAtenuada = it < CONFETI_ATENUADA
+            var cx = r(0f, w)
+            var cy = r(0f, h * 0.78f)
+            if (enAtenuada) {
+                cx = sinBordes(cx, ext)
+                cy = bajoReserva(cy, ext, 0f, h * 0.78f)
+            }
             val tira = if (tipo == 2) Path().apply {
                 moveTo(-ancho / 2f, 0f)
                 cubicTo(-ancho / 6f, -ancho * 0.35f, ancho / 6f, ancho * 0.35f, ancho / 2f, 0f)
             } else null
             Pieza(
-                tipo, Offset(r(0f, w), r(0f, h * 0.78f)), ancho, alto,
+                tipo, Offset(cx, cy), ancho, alto,
                 r(0f, 360f), color, r(0.55f, 0.95f), tira,
             )
         }
@@ -214,8 +251,19 @@ private class Geometria(size: Size, d: Density, piso: Offset) {
         estrellas = List(ESTRELLAS) { i ->
             // Tamaños muy distintos: dos grandes, el resto chicas.
             val radio = (if (i < 2) r(14f, 22f) else r(4f, 10f)) * dp
+            var cx = r(0.04f * w, 0.96f * w)
+            var cy = r(0.03f * h, 0.7f * h)
+            // Halo incluido: es lo que se ve cortado, no solo las puntas.
+            val ext = radio * 1.7f + 2f * dp
+            if (i < ESTRELLAS_ATENUADA) {
+                cx = sinBordes(cx, ext)
+                cy = bajoReserva(cy, ext, 0.03f * h, 0.7f * h)
+            } else {
+                // En COMPLETA no hay marquesina, pero la barra de estado igual corta.
+                cy = maxOf(cy, BARRA_ESTADO_DP * dp + ext)
+            }
             Estrella(
-                Offset(r(0.04f * w, 0.96f * w), r(0.03f * h, 0.7f * h)),
+                Offset(cx, cy),
                 radio,
                 if (azar.nextInt(3) == 0) Dorado else BlancoEscena,
                 halo = radio > 9f * dp,

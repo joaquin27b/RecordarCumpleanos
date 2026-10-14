@@ -171,6 +171,7 @@ class MainActivity : ComponentActivity() {
                         stringResource(R.string.accion_agregar),
                         onClick = { onAlta(true) },
                         icono = Icons.Filled.Add,
+                        destacado = true,
                     )
                 }
             },

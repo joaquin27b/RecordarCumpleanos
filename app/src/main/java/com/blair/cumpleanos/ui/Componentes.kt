@@ -13,6 +13,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -132,6 +133,7 @@ fun Tarjeta(
     intenso: Boolean = false,
     confeti: Boolean = false,
     onClick: (() -> Unit)? = null,
+    relleno: PaddingValues = PaddingValues(16.dp),
     contenido: @Composable ColumnScope.() -> Unit,
 ) {
     val forma = RoundedCornerShape(RadioTarjeta)
@@ -145,10 +147,16 @@ fun Tarjeta(
             .border(if (intenso) 2.dp else 1.4.dp, neon.copy(alpha = if (intenso) 1f else 0.85f), forma)
             .then(if (confeti) Modifier.confetiPropio() else Modifier)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(16.dp),
+            .padding(relleno),
         content = contenido,
     )
 }
+
+/** Radio de la marquesina: con ~82 dp de alto, 30 la dejaba casi pildora. */
+private val RadioMarquesina = 22.dp
+
+/** Lamparitas por lado largo. Los cortos llevan las que entren con el mismo paso. */
+private const val LAMPARITAS_POR_LADO = 12
 
 /**
  * Marquesina de teatro: recuadro magenta con reborde de neon y lamparitas
@@ -156,11 +164,11 @@ fun Tarjeta(
  */
 @Composable
 fun Marquesina(modifier: Modifier = Modifier, contenido: @Composable () -> Unit) {
-    val forma = RoundedCornerShape(30.dp)
+    val forma = RoundedCornerShape(RadioMarquesina)
     Box(
         modifier
             .fillMaxWidth()
-            .halo(HazFucsia, radio = 30.dp, trazo = 2.dp)
+            .halo(HazFucsia, radio = RadioMarquesina, trazo = 2.dp)
             .clip(forma)
             .background(
                 Brush.verticalGradient(
@@ -169,23 +177,28 @@ fun Marquesina(modifier: Modifier = Modifier, contenido: @Composable () -> Unit)
             )
             .border(2.dp, HazFucsia, forma)
             .lamparitas()
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+            .padding(horizontal = 10.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center,
     ) { contenido() }
 }
 
 /** Lamparitas doradas y blancas alternadas por dentro del borde. Fijas: no titilan. */
 private fun Modifier.lamparitas(): Modifier = drawBehind {
-    val m = 9.dp.toPx()
-    val paso = 20.dp.toPx()
-    val r = 2.4.dp.toPx()
+    val m = 5.dp.toPx()
+    val r = 1.6.dp.toPx()
     val ancho = size.width
     val alto = size.height
+    // Fuera de las esquinas redondeadas: ahi el borde se curva y la lamparita queda afuera.
+    val esquina = RadioMarquesina.toPx() * 0.6f
+    val largo = ancho - 2 * (m + esquina)
+    val paso = largo / (LAMPARITAS_POR_LADO - 1)
     val puntos = buildList {
-        var x = m + 16.dp.toPx()
-        while (x < ancho - m - 16.dp.toPx()) { add(Offset(x, m)); add(Offset(x, alto - m)); x += paso }
-        var y = m + 18.dp.toPx()
-        while (y < alto - m - 18.dp.toPx()) { add(Offset(m, y)); add(Offset(ancho - m, y)); y += paso }
+        for (k in 0 until LAMPARITAS_POR_LADO) {
+            val x = m + esquina + k * paso
+            add(Offset(x, m)); add(Offset(x, alto - m))
+        }
+        var y = m + esquina + paso / 2f
+        while (y < alto - m - esquina) { add(Offset(m, y)); add(Offset(ancho - m, y)); y += paso }
     }
     puntos.forEachIndexed { i, c ->
         val color = if (i % 2 == 0) Dorado else BlancoEscena
@@ -304,6 +317,7 @@ fun BotonPrincipal(
     modifier: Modifier = Modifier,
     habilitado: Boolean = true,
     icono: ImageVector? = null,
+    destacado: Boolean = false,
 ) {
     val interaccion = remember { MutableInteractionSource() }
     val presionado by interaccion.collectIsPressedAsState()
@@ -326,9 +340,11 @@ fun BotonPrincipal(
                     }
                 } else Modifier,
             )
-            .heightIn(min = 52.dp)
+            .then(if (destacado && habilitado) Modifier.glowFuerte() else Modifier)
+            .heightIn(min = if (destacado) 60.dp else 52.dp)
             .clip(CircleShape)
             .background(if (habilitado) DegradeCian else Brush.horizontalGradient(listOf(Escenario1.copy(alpha = 0.5f), Escenario1.copy(alpha = 0.5f))))
+            .then(if (destacado && habilitado) Modifier.border(1.5.dp, CianBorde, CircleShape) else Modifier)
             .clickable(
                 interactionSource = interaccion,
                 indication = androidx.compose.material3.ripple(color = TintaSobreLuz),
@@ -336,23 +352,46 @@ fun BotonPrincipal(
                 role = Role.Button,
                 onClick = onClick,
             )
-            .padding(horizontal = 24.dp, vertical = 14.dp),
+            .padding(horizontal = if (destacado) 34.dp else 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
         val tinta = if (habilitado) TintaSobreLuz else BlancoEscena.copy(alpha = 0.5f)
         if (icono != null) {
-            Icon(icono, contentDescription = null, tint = tinta, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
+            // Destacado: el + pesa lo mismo que el texto, no es un adorno.
+            Icon(icono, contentDescription = null, tint = tinta, modifier = Modifier.size(if (destacado) 28.dp else 20.dp))
+            Spacer(Modifier.width(if (destacado) 10.dp else 8.dp))
         }
         Text(
             texto,
             color = tinta,
             fontWeight = FontWeight.ExtraBold,
-            fontSize = 15.sp,
+            fontSize = if (destacado) 17.sp else 15.sp,
             letterSpacing = 0.6.sp,
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.labelLarge,
+        )
+    }
+}
+
+/** Borde del boton destacado: cian casi blanco, separa el degradado del glow. */
+private val CianBorde = Color(0xFFD8FCFF)
+
+/** Glow de la accion principal: anillos por fuera, mas separados y opacos que el halo de tarjeta. */
+private val ANILLOS_GLOW_FUERTE = listOf(2f to 0.60f, 5f to 0.38f, 9f to 0.20f, 14f to 0.09f, 20f to 0.04f)
+
+/** Pildora: el radio de los anillos sigue la mitad del alto. Va antes del clip. */
+private fun Modifier.glowFuerte(): Modifier = drawBehind {
+    val r = size.height / 2f
+    ANILLOS_GLOW_FUERTE.forEach { (sep, a) ->
+        val s = sep * density
+        drawRoundRect(
+            CianNeon,
+            topLeft = Offset(-s, -s),
+            size = Size(size.width + 2 * s, size.height + 2 * s),
+            cornerRadius = CornerRadius(r + s),
+            alpha = a,
+            style = Stroke(2.5f * density),
         )
     }
 }
