@@ -153,10 +153,15 @@ private class Geometria(size: Size, d: Density, piso: Offset) {
         // Y con aire: pegada al reborde, a traves de la tarjeta translucida, se lee igual.
         val aire = 12f * dp
         fun sinBordes(x: Float, ext: Float): Float = x.coerceIn(bordeIzq + ext + aire, bordeDer - ext - aire)
-        fun bajoReserva(y: Float, ext: Float, desde: Float, hasta: Float): Float {
-            val t = ((y - desde) / (hasta - desde)).coerceIn(0f, 1f)
-            return lerp(reserva + ext, hasta, t)
-        }
+        // Lo que cae en la banda va a media altura y a un costado: justo debajo
+        // de la reserva, en el estado vacio, pisa el texto de bienvenida; al
+        // centro, a Velita. Lo que no cae en la banda no se mueve.
+        fun fueraDeBanda(c: Offset, ext: Float): Offset =
+            if (c.y >= reserva + ext) c
+            else Offset(
+                if (c.x < w / 2f) minOf(c.x, w * 0.22f) else maxOf(c.x, w * 0.78f),
+                lerp(0.40f * h, 0.55f * h, c.y / (reserva + ext)),
+            )
 
         base = Brush.radialGradient(
             0f to Resplandor3,
@@ -232,18 +237,17 @@ private class Geometria(size: Size, d: Density, piso: Offset) {
             val alto = if (tipo == 0) r(2.5f, 5f) * dp else ancho
             val ext = maxOf(ancho, alto) / 2f + 2f * dp
             val enAtenuada = it < CONFETI_ATENUADA
-            var cx = r(0f, w)
-            var cy = r(0f, h * 0.78f)
+            var centro = Offset(r(0f, w), r(0f, h * 0.78f))
             if (enAtenuada) {
-                cx = sinBordes(cx, ext)
-                cy = bajoReserva(cy, ext, 0f, h * 0.78f)
+                centro = fueraDeBanda(centro, ext)
+                centro = centro.copy(x = sinBordes(centro.x, ext))
             }
             val tira = if (tipo == 2) Path().apply {
                 moveTo(-ancho / 2f, 0f)
                 cubicTo(-ancho / 6f, -ancho * 0.35f, ancho / 6f, ancho * 0.35f, ancho / 2f, 0f)
             } else null
             Pieza(
-                tipo, Offset(cx, cy), ancho, alto,
+                tipo, centro, ancho, alto,
                 r(0f, 360f), color, r(0.55f, 0.95f), tira,
             )
         }
@@ -251,19 +255,18 @@ private class Geometria(size: Size, d: Density, piso: Offset) {
         estrellas = List(ESTRELLAS) { i ->
             // Tamaños muy distintos: dos grandes, el resto chicas.
             val radio = (if (i < 2) r(14f, 22f) else r(4f, 10f)) * dp
-            var cx = r(0.04f * w, 0.96f * w)
-            var cy = r(0.03f * h, 0.7f * h)
+            var centro = Offset(r(0.04f * w, 0.96f * w), r(0.03f * h, 0.7f * h))
             // Halo incluido: es lo que se ve cortado, no solo las puntas.
             val ext = radio * 1.7f + 2f * dp
             if (i < ESTRELLAS_ATENUADA) {
-                cx = sinBordes(cx, ext)
-                cy = bajoReserva(cy, ext, 0.03f * h, 0.7f * h)
+                centro = fueraDeBanda(centro, ext)
+                centro = centro.copy(x = sinBordes(centro.x, ext))
             } else {
                 // En COMPLETA no hay marquesina, pero la barra de estado igual corta.
-                cy = maxOf(cy, BARRA_ESTADO_DP * dp + ext)
+                centro = centro.copy(y = maxOf(centro.y, BARRA_ESTADO_DP * dp + ext))
             }
             Estrella(
-                Offset(cx, cy),
+                centro,
                 radio,
                 if (azar.nextInt(3) == 0) Dorado else BlancoEscena,
                 halo = radio > 9f * dp,

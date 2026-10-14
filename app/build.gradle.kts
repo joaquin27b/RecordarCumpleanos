@@ -59,6 +59,23 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+        // Release con R8 y no depurable, para medir fluidez y sacar capturas con
+        // datos de prueba. Paquete propio: no pisa la release instalada. IDs de
+        // anuncio de PRUEBA: impresiones propias con los reales son trafico invalido.
+        create("medicion") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".medicion"
+            versionNameSuffix = "-medicion"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            buildConfigField("String", "AD_UNIT_BANNER", "\"ca-app-pub-3940256099942544/9214589741\"")
+            manifestPlaceholders["adAppId"] = "ca-app-pub-3940256099942544~3347511713"
+        }
+    }
+    // El sembrador de datos de prueba existe en debug y medicion, nunca en release.
+    sourceSets {
+        getByName("debug").kotlin.srcDir("src/sembrador/java")
+        getByName("medicion").kotlin.srcDir("src/sembrador/java")
     }
 
     compileOptions {
