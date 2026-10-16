@@ -3,7 +3,6 @@ package com.blair.cumpleanos.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
@@ -396,7 +395,7 @@ private fun Cabecera(cumplesDelMes: Int, loc: Locale, modifier: Modifier) {
 }
 
 /**
- * "ESTE MES / 3 🥳" en dos lineas: sin el nombre del mes, que era lo que la
+ * "ESTE MES / 3" en dos lineas: sin el nombre del mes, que era lo que la
  * alargaba y la cortaba en pantallas angostas.
  */
 @Composable
@@ -416,26 +415,14 @@ private fun ContadorMes(cantidad: Int, loc: Locale, modifier: Modifier) {
             maxLines = 1,
             softWrap = false,
         )
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(
-                cantidad.toString(),
-                color = TintaSobreLuz,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Black,
-                lineHeight = 20.sp,
-                maxLines = 1,
-            )
-            // Sobre un circulo oscuro: el 🥳 es amarillo y sobre el dorado se perdia.
-            Box(
-                Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(TintaSobreLuz),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("🥳", fontSize = 13.sp, lineHeight = 13.sp)
-            }
-        }
+        Text(
+            cantidad.toString(),
+            color = TintaSobreLuz,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Black,
+            lineHeight = 20.sp,
+            maxLines = 1,
+        )
     }
 }
 
