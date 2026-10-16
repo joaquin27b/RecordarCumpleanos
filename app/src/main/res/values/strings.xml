@@ -137,8 +137,12 @@
     <string name="festejo_quitar">Remove the party date</string>
     <string name="notif_festeja_hoy">%1$s celebrates TODAY</string>
     <string name="notif_festeja_manana">%1$s celebrates TOMORROW, %2$s</string>
-    <plurals name="cumples_del_mes">
-        <item quantity="one">%1$d birthday in %2$s</item>
-        <item quantity="other">%1$d birthdays in %2$s</item>
+    <string name="festejo_mismo_dia">Party on the same day</string>
+    <string name="pildora_festeja_hoy">Party is TODAY</string>
+    <string name="pildora_festejo_manana">Party tomorrow</string>
+    <plurals name="pildora_festejo_en">
+        <item quantity="one">Party in %d day</item>
+        <item quantity="other">Party in %d days</item>
     </plurals>
+    <string name="contador_mes">This month</string>
 </resources>

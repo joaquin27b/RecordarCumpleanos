@@ -12,6 +12,7 @@ import com.blair.cumpleanos.dominio.Estado
 import com.blair.cumpleanos.dominio.anioDe
 import com.blair.cumpleanos.dominio.edad
 import com.blair.cumpleanos.dominio.estado
+import com.blair.cumpleanos.dominio.mandaFestejo
 import com.blair.cumpleanos.repo.Movida
 import com.blair.cumpleanos.repo.Repositorio
 import java.time.LocalDate
@@ -34,7 +35,13 @@ data class FilaCumple(
     val diasRestantes: Int,
     /** null si no se conoce el anio de nacimiento. */
     val edad: Int?,
-)
+    /** Fecha pendiente mas proxima, cumple o festejo: ordena y agrupa la lista. */
+    val proxima: Int,
+    /** La fecha que manda es la del festejo: la pildora y la insignia hablan de el. */
+    val mandaFestejo: Boolean,
+) {
+    val diasProxima: Int get() = diasRestantes + (proxima - c.fechaDia)
+}
 
 /** La lista es plana: el corte de grupo es un elemento, no un Map anidado. */
 sealed interface FilaLista {
@@ -71,8 +78,10 @@ class ListaViewModel(
             val anioHoy = anioDe(hoy())
             l.asSequence()
                 .filter { it.estado == Estado.HOY || it.estado == Estado.PROXIMO }
-                .sortedBy { it.c.fechaDia }
-                .groupBy { anioDe(it.c.fechaDia) }
+                // Por la fecha pendiente mas proxima, no por fechaDia: un cumple ya
+                // saludado con el festejo en 4 dias va arriba, no en el año que viene.
+                .sortedWith(compareBy({ it.proxima }, { it.c.fechaDia }))
+                .groupBy { anioDe(it.proxima) }
                 .toSortedMap()
                 .flatMap { (anio, filas) ->
                     buildList<FilaLista> {
@@ -107,11 +116,16 @@ class ListaViewModel(
     private fun filas() = db.cumpleDao().abiertos().map { lista ->
         val hoy = hoy()
         lista.map { c ->
+            val estado = estado(c.fechaDia, hoy)
+            // Uno sin saludar sigue hablando de su cumple: el festejo no lo tapa.
+            val festejo = estado == Estado.PROXIMO && mandaFestejo(c.fechaDia, c.fechaFestejoDia, hoy)
             FilaCumple(
                 c = c,
-                estado = estado(c.fechaDia, hoy),
+                estado = estado,
                 diasRestantes = c.fechaDia - hoy,
                 edad = edad(c.fechaDia, c.anioNacimiento),
+                proxima = if (festejo) c.fechaFestejoDia!! else c.fechaDia,
+                mandaFestejo = festejo,
             )
         }
     }

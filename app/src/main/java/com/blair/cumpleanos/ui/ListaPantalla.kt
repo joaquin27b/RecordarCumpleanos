@@ -1,12 +1,15 @@
 package com.blair.cumpleanos.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -71,6 +74,7 @@ import com.blair.cumpleanos.ui.theme.EscenarioBorde
 import com.blair.cumpleanos.ui.theme.HazFucsia
 import com.blair.cumpleanos.ui.theme.RojoCta
 import com.blair.cumpleanos.ui.theme.TextoSecundario
+import com.blair.cumpleanos.ui.theme.TintaSobreLuz
 import java.time.LocalDate
 import java.time.YearMonth
 import java.util.Locale
@@ -350,25 +354,27 @@ private fun Cabecera(cumplesDelMes: Int, loc: Locale, modifier: Modifier) {
                 // por la izquierda y el padding de la marquesina, mas aire.
                 Spacer(Modifier.width(ANCHO_VELITA_CABECERA - DESBORDE_IZQUIERDA - 10.dp + 8.dp))
                 Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // El titulo y el contador van a su ancho natural: si no entran
+                    // juntos, el contador baja de linea. Nada se achica ni se corta,
+                    // sea cual sea el ancho del telefono o el tamaño de fuente.
+                    FlowRow(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        itemVerticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
                         TituloCromado(
                             texto = stringResource(R.string.marca),
                             tamano = 19.sp,
                             resplandor = false,
                             extrusion = 2,
                             alineacion = Alignment.Start,
+                            modifier = Modifier.padding(end = 8.dp),
                         )
-                        Spacer(Modifier.weight(1f))
                         // Informativo: en 0 no se muestra, una pildora vacia es ruido.
+                        // El margen final la separa de las lamparitas del marco.
                         if (cumplesDelMes > 0) {
-                            Pildora(
-                                pluralStringResource(
-                                    R.plurals.cumples_del_mes, cumplesDelMes,
-                                    cumplesDelMes, nombreMesSolo(YearMonth.now(), loc),
-                                ),
-                                TipoPildora.DORADA,
-                                modifier = Modifier.padding(start = 8.dp),
-                            )
+                            ContadorMes(cumplesDelMes, loc, Modifier.padding(end = 8.dp))
                         }
                     }
                     Spacer(Modifier.height(2.dp))
@@ -386,6 +392,50 @@ private fun Cabecera(cumplesDelMes: Int, loc: Locale, modifier: Modifier) {
                 .height(ALTO_VELITA_CABECERA)
                 .offset(x = -DESBORDE_IZQUIERDA, y = -DESBORDE_ARRIBA),
         )
+    }
+}
+
+/**
+ * "ESTE MES / 3 🥳" en dos lineas: sin el nombre del mes, que era lo que la
+ * alargaba y la cortaba en pantallas angostas.
+ */
+@Composable
+private fun ContadorMes(cantidad: Int, loc: Locale, modifier: Modifier) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Dorado)
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            stringResource(R.string.contador_mes).uppercase(loc),
+            color = TintaSobreLuz,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            softWrap = false,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(
+                cantidad.toString(),
+                color = TintaSobreLuz,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Black,
+                lineHeight = 20.sp,
+                maxLines = 1,
+            )
+            // Sobre un circulo oscuro: el 🥳 es amarillo y sobre el dorado se perdia.
+            Box(
+                Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(TintaSobreLuz),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("🥳", fontSize = 13.sp, lineHeight = 13.sp)
+            }
+        }
     }
 }
 
@@ -435,13 +485,13 @@ private fun TarjetaCumple(
     val acento = when (f.estado) {
         Estado.HOY -> CianNeon
         Estado.PASADO, Estado.OLVIDADO -> RojoCta
-        Estado.PROXIMO -> if (f.diasRestantes <= DIAS_DESTACADO) Dorado else BlancoEscena.copy(alpha = 0.6f)
+        Estado.PROXIMO -> if (f.diasProxima <= DIAS_DESTACADO) Dorado else BlancoEscena.copy(alpha = 0.6f)
     }
     val urgente = f.estado == Estado.PASADO || f.estado == Estado.OLVIDADO
     val neon = when (f.estado) {
         Estado.HOY -> CianNeon
         Estado.PASADO, Estado.OLVIDADO -> RojoCta
-        Estado.PROXIMO -> if (f.diasRestantes <= DIAS_DESTACADO) Dorado else EscenarioBorde
+        Estado.PROXIMO -> if (f.diasProxima <= DIAS_DESTACADO) Dorado else EscenarioBorde
     }
     Tarjeta(
         modifier,
@@ -451,7 +501,10 @@ private fun TarjetaCumple(
         onClick = { onEditar(f.c.personaId) },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            InsigniaFecha(diaDelMes(f.c.fechaDia), mesCorto(f.c.fechaDia, loc), acento)
+            // La insignia es la fecha que manda: bajo "ESTE AÑO" un "5 OCT" ya pasado
+            // se leia fuera de orden. El cumple sigue en la linea de detalle.
+            if (f.mandaFestejo) InsigniaFecha(diaDelMes(f.proxima), mesCorto(f.proxima, loc), HazFucsia, festejo = true)
+            else InsigniaFecha(diaDelMes(f.c.fechaDia), mesCorto(f.c.fechaDia, loc), acento)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
@@ -470,9 +523,12 @@ private fun TarjetaCumple(
                         ?: stringResource(R.string.regalo_tocar),
                     apagada = f.c.regaloPlan == null,
                 )
-                // El mismo dia del cumple es redundante: no va como linea aparte.
-                f.c.fechaFestejoDia?.takeIf { it != f.c.fechaDia }?.let {
-                    LineaFestejo(stringResource(R.string.festejo_linea, fechaConDia(it, loc)))
+                // El mismo dia del cumple tambien se dice: oculto, parecia un dato perdido.
+                f.c.fechaFestejoDia?.let {
+                    LineaFestejo(
+                        if (it == f.c.fechaDia) stringResource(R.string.festejo_mismo_dia)
+                        else stringResource(R.string.festejo_linea, fechaConDia(it, loc))
+                    )
                 }
                 Spacer(Modifier.height(2.dp))
                 PildoraDeEstado(f)
@@ -499,9 +555,14 @@ private fun PildoraDeEstado(f: FilaCumple) {
             icono = Icons.Filled.Warning,
         )
         Estado.PROXIMO -> Pildora(
-            if (f.diasRestantes == 1) stringResource(R.string.cumple_manana)
-            else pluralStringResource(R.plurals.pildora_faltan, f.diasRestantes, f.diasRestantes),
-            if (f.diasRestantes <= DIAS_DESTACADO) TipoPildora.DORADA else TipoPildora.VIOLETA,
+            when {
+                f.mandaFestejo && f.diasProxima == 0 -> stringResource(R.string.pildora_festeja_hoy)
+                f.mandaFestejo && f.diasProxima == 1 -> stringResource(R.string.pildora_festejo_manana)
+                f.mandaFestejo -> pluralStringResource(R.plurals.pildora_festejo_en, f.diasProxima, f.diasProxima)
+                f.diasRestantes == 1 -> stringResource(R.string.cumple_manana)
+                else -> pluralStringResource(R.plurals.pildora_faltan, f.diasRestantes, f.diasRestantes)
+            },
+            if (f.diasProxima <= DIAS_DESTACADO) TipoPildora.DORADA else TipoPildora.VIOLETA,
         )
     }
 }

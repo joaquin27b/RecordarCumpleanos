@@ -12,6 +12,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.ColumnScope
@@ -53,8 +54,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.blair.cumpleanos.R
 import com.blair.cumpleanos.ui.escena.destello
 import com.blair.cumpleanos.ui.escena.trazoDestello
 import com.blair.cumpleanos.ui.theme.BlancoEscena
@@ -433,11 +436,37 @@ fun EncabezadoSeccion(
     }
 }
 
-/** Dia grande y mes corto: la "entrada" del cumpleaños, como un ticket de show. */
+/**
+ * Dia grande y mes corto: la "entrada" del cumpleaños, como un ticket de show.
+ *
+ * @param festejo la fecha es la del festejo y no la del cumple: lleva el 🎉 en la esquina.
+ */
 @Composable
-fun InsigniaFecha(dia: Int, mes: String, color: Color, modifier: Modifier = Modifier) {
+fun InsigniaFecha(dia: Int, mes: String, color: Color, modifier: Modifier = Modifier, festejo: Boolean = false) {
+    Box(modifier) {
+        CuerpoInsignia(dia, mes, color)
+        if (festejo) {
+            Icon(
+                painterResource(R.drawable.ic_festejo),
+                contentDescription = null,
+                tint = HazFucsia,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 6.dp, y = (-6).dp)
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(NochePiso)
+                    .border(1.dp, HazFucsia.copy(alpha = 0.7f), CircleShape)
+                    .padding(3.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CuerpoInsignia(dia: Int, mes: String, color: Color) {
     Column(
-        modifier
+        Modifier
             .width(56.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(NochePiso.copy(alpha = 0.55f))

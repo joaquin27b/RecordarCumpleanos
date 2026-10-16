@@ -44,3 +44,17 @@ fun mesDe(epochDay: Int): Int = LocalDate.ofEpochDay(epochDay.toLong()).monthVal
 
 /** Anio de un epochDay. */
 fun anioDe(epochDay: Int): Int = LocalDate.ofEpochDay(epochDay.toLong()).year
+
+/**
+ * Fecha pendiente mas proxima de una ocurrencia: la menor entre el cumple y el
+ * festejo, contando solo las que no pasaron. Cumple saludado el 5/10 y festejo
+ * el 18/10: manda el 18, aunque la ocurrencia abierta ya sea la del año que viene.
+ * Si no queda ninguna por delante, el cumple.
+ */
+fun fechaQueManda(fechaDia: Int, fechaFestejoDia: Int?, hoy: Int): Int =
+    listOfNotNull(fechaDia, fechaFestejoDia).filter { it >= hoy }.minOrNull() ?: fechaDia
+
+/** True si la fecha que manda es la del festejo. Festejo el mismo dia: gana el cumple. */
+fun mandaFestejo(fechaDia: Int, fechaFestejoDia: Int?, hoy: Int): Boolean =
+    fechaFestejoDia != null && fechaFestejoDia != fechaDia &&
+        fechaQueManda(fechaDia, fechaFestejoDia, hoy) == fechaFestejoDia

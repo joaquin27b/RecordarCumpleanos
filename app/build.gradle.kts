@@ -22,8 +22,8 @@ android {
         applicationId = "com.blair.cumpleanos"
         minSdk = 26
         targetSdk = 37
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.1.1"
         buildConfigField("boolean", "PEDIR_ANUNCIO", "true")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

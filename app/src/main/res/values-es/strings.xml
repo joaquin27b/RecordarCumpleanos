@@ -135,8 +135,12 @@
     <string name="festejo_quitar">Quitar la fecha del festejo</string>
     <string name="notif_festeja_hoy">%1$s festeja HOY</string>
     <string name="notif_festeja_manana">%1$s festeja MAÑANA, %2$s</string>
-    <plurals name="cumples_del_mes">
-        <item quantity="one">%1$d cumpleaños en %2$s</item>
-        <item quantity="other">%1$d cumpleaños en %2$s</item>
+    <string name="festejo_mismo_dia">Festejo el mismo día</string>
+    <string name="pildora_festeja_hoy">Festeja HOY</string>
+    <string name="pildora_festejo_manana">Festejo mañana</string>
+    <plurals name="pildora_festejo_en">
+        <item quantity="one">Festejo en %d día</item>
+        <item quantity="other">Festejo en %d días</item>
     </plurals>
+    <string name="contador_mes">Este mes</string>
 </resources>

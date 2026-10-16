@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /**
- * Carga 15 personas de prueba para medir fluidez y sacar capturas.
+ * Carga 16 personas de prueba para medir fluidez y sacar capturas.
  *
  * Solo en debug y medicion (src/sembrador): release no la trae. Se dispara con
  *   adb shell am start -n <paquete>/com.blair.cumpleanos.sembrador.SembrarActivity [--ez tick true]
@@ -35,13 +35,16 @@ class SembrarActivity : Activity() {
     )
 
     private val fijas = listOf(
-        // Festejo el mismo dia del cumple: no va como linea aparte ni duplica aviso.
+        // Festejo el mismo dia del cumple: "Festejo el mismo dia", sin duplicar aviso.
         Fija("Valentina", 14, 10, 1990, "Un libro de Cortázar", festejo = 14 to 10),
         // Festejo MAÑANA y HOY, para probar los dos avisos.
         Fija("María de los Ángeles Etcheverría", 11, 10, 1987, "Una cafetera italiana de las grandes y café de especialidad", cargadaHace = 10, festejo = 15 to 10),
         Fija("Joaquín", 12, 10, null, cargadaHace = 10, festejo = 14 to 10),
         Fija("Lucía", 15, 10, 1995, "Auriculares"),
         Fija("Tomás", 17, 10, 2001, preavisos = "30,15,7,3,1", festejo = 18 to 10),
+        // Cumple ya pasado y cerrado, festejo por delante: la ocurrencia abierta es la
+        // del año que viene, pero la tarjeta va donde cae el festejo y este avisa.
+        Fija("Patry", 5, 10, null, festejo = 18 to 10),
         Fija("Sofía Belén Gutiérrez Zabaleta", 25, 10, null, "Entradas para el recital de diciembre"),
         Fija("Martín", 2, 11, 1979),
         Fija("Camila", 20, 11, 1999, "Una planta"),
