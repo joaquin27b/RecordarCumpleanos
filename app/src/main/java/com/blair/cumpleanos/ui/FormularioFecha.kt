@@ -142,11 +142,15 @@ fun CampoTexto(
     ayuda: String? = null,
     habilitado: Boolean = true,
     teclado: KeyboardOptions = KeyboardOptions.Default,
+    iconoInicio: (@Composable () -> Unit)? = null,
+    iconoFin: (@Composable () -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = valor,
         onValueChange = onCambio,
         label = { Text(etiqueta) },
+        leadingIcon = iconoInicio,
+        trailingIcon = iconoFin,
         isError = error != null,
         supportingText = (error ?: ayuda)?.let { t -> { Text(t) } },
         singleLine = true,

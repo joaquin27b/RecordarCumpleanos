@@ -143,4 +143,8 @@
         <item quantity="other">Festejo en %d días</item>
     </plurals>
     <string name="contador_mes">Este mes</string>
+    <string name="hist_buscar">Buscar por nombre</string>
+    <string name="hist_buscando_todo">Buscando en todo el historial</string>
+    <string name="hist_sin_resultados">Sin resultados para «%1$s»</string>
+    <string name="desc_limpiar_busqueda">Borrar búsqueda</string>
 </resources>

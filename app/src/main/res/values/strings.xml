@@ -145,4 +145,8 @@
         <item quantity="other">Party in %d days</item>
     </plurals>
     <string name="contador_mes">This month</string>
+    <string name="hist_buscar">Search by name</string>
+    <string name="hist_buscando_todo">Searching the whole history</string>
+    <string name="hist_sin_resultados">No results for «%1$s»</string>
+    <string name="desc_limpiar_busqueda">Clear search</string>
 </resources>

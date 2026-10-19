@@ -26,7 +26,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -49,6 +52,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,6 +68,7 @@ import com.blair.cumpleanos.dominio.Tiempo
 import com.blair.cumpleanos.dominio.tiempo
 import com.blair.cumpleanos.dominio.diaDelMes
 import com.blair.cumpleanos.dominio.edad
+import com.blair.cumpleanos.dominio.normalizar
 import com.blair.cumpleanos.ui.escena.TituloCromado
 import com.blair.cumpleanos.ui.escena.Velita
 import com.blair.cumpleanos.ui.escena.VelitaEnEscenario
@@ -103,6 +109,9 @@ private sealed interface Item {
     data class Cumple(val f: FilaCumple) : Item { override val clave = "c" + f.c.id }
     data class Personas(val lista: List<Persona>) : Item { override val clave = "personas" }
     data object ControlesHistorial : Item { override val clave = "ctrlHist" }
+    data object Buscador : Item { override val clave = "buscador" }
+    data object BuscandoTodo : Item { override val clave = "buscandoTodo" }
+    data object SinResultados : Item { override val clave = "sinResultados" }
     data class Saludo(val c: CumpleUi) : Item { override val clave = "s" + c.id }
     data class Vacio(val texto: Int, override val clave: String) : Item
     data object Pie : Item { override val clave = "pie" }
@@ -136,9 +145,13 @@ fun ListaPantalla(
     onMesAnterior: () -> Unit,
     onMesSiguiente: () -> Unit,
     onAlternarPorAnio: (Boolean) -> Unit,
+    busqueda: String,
+    onBuscar: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val loc = locale()
+    // Mismo criterio que el ViewModel: "  " o una tilde suelta no es buscar.
+    val buscando = normalizar(busqueda).isNotEmpty()
     var aBorrar by remember { mutableStateOf<Persona?>(null) }
     var borrarHist by remember { mutableStateOf(false) }
     var confirmar by remember { mutableStateOf<AccionHistorial?>(null) }
@@ -167,8 +180,11 @@ fun ListaPantalla(
             add(Item.Personas(personas))
         }
         add(Item.Seccion(R.string.sec_historial, CianNeon, "secHistorial"))
-        add(Item.ControlesHistorial)
-        if (historial.isEmpty()) add(Item.Vacio(R.string.hist_vacio, "vacioHist"))
+        add(Item.Buscador)
+        // Buscando, el rango no aplica: sus controles mentirian.
+        if (buscando) add(Item.BuscandoTodo) else add(Item.ControlesHistorial)
+        // "No hay saludos" y "nadie se llama asi" son cosas distintas.
+        if (historial.isEmpty()) add(if (buscando) Item.SinResultados else Item.Vacio(R.string.hist_vacio, "vacioHist"))
         historial.forEach { add(Item.Saludo(it)) }
         add(Item.Pie)
     }
@@ -212,6 +228,19 @@ fun ListaPantalla(
                 is Item.Saludo -> TarjetaSaludo(item.c, loc, { onEditarRegalo(item.c) }, anim)
                 is Item.Vacio -> Text(
                     stringResource(item.texto),
+                    color = TextoSecundario,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = anim.padding(vertical = 8.dp, horizontal = 4.dp),
+                )
+                Item.Buscador -> BuscadorHistorial(busqueda, onBuscar, anim)
+                Item.BuscandoTodo -> Text(
+                    stringResource(R.string.hist_buscando_todo),
+                    color = TextoSecundario,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = anim.padding(horizontal = 4.dp),
+                )
+                Item.SinResultados -> Text(
+                    stringResource(R.string.hist_sin_resultados, busqueda.trim()),
                     color = TextoSecundario,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = anim.padding(vertical = 8.dp, horizontal = 4.dp),
@@ -624,6 +653,29 @@ private fun ControlesHistorial(
         Spacer(Modifier.width(6.dp))
         ChipEleccion(stringResource(R.string.hist_anio), porAnio, { onAlternarPorAnio(true) })
     }
+}
+
+/**
+ * Sin imePadding: el Scaffold ya suma WindowInsets.ime y con los dos el campo
+ * sube el doble del teclado.
+ */
+@Composable
+private fun BuscadorHistorial(texto: String, onCambio: (String) -> Unit, modifier: Modifier) {
+    CampoTexto(
+        valor = texto,
+        onCambio = onCambio,
+        etiqueta = stringResource(R.string.hist_buscar),
+        teclado = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Search),
+        iconoInicio = { Icon(Icons.Filled.Search, contentDescription = null, tint = CianNeon) },
+        iconoFin = if (texto.isEmpty()) null else {
+            {
+                IconButton(onClick = { onCambio("") }) {
+                    Icon(Icons.Filled.Close, stringResource(R.string.desc_limpiar_busqueda), tint = TextoSecundario)
+                }
+            }
+        },
+        modifier = modifier,
+    )
 }
 
 @Composable

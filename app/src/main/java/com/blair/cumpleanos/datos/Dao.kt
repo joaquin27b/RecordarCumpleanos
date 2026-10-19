@@ -97,6 +97,16 @@ interface CumpleDao {
     )
     fun saludadosEntre(desde: Int, hasta: Int): Flow<List<CumpleUi>>
 
+    /** HISTORIAL completo, sin rango: el buscador filtra en Kotlin sobre esto. */
+    @Query(
+        """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
+                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal, c.fechaFestejoDia
+           FROM cumple c JOIN persona p ON p.id = c.personaId
+           WHERE c.saludadoDia IS NOT NULL
+           ORDER BY c.saludadoDia DESC"""
+    )
+    fun saludadosTodos(): Flow<List<CumpleUi>>
+
     /** Ficha de una persona: todo, saludado o no. */
     @Query("SELECT * FROM cumple WHERE personaId = :personaId ORDER BY fechaDia DESC")
     fun historialDe(personaId: Long): Flow<List<Cumple>>

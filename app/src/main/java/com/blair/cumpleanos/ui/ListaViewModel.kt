@@ -8,11 +8,14 @@ import com.blair.cumpleanos.datos.CumpleUi
 import com.blair.cumpleanos.datos.Persona
 
 import com.blair.cumpleanos.datos.PersonaConHistorial
+import com.blair.cumpleanos.dominio.ConClave
 import com.blair.cumpleanos.dominio.Estado
 import com.blair.cumpleanos.dominio.anioDe
 import com.blair.cumpleanos.dominio.edad
 import com.blair.cumpleanos.dominio.estado
+import com.blair.cumpleanos.dominio.filtrarPorNombre
 import com.blair.cumpleanos.dominio.mandaFestejo
+import com.blair.cumpleanos.dominio.normalizar
 import com.blair.cumpleanos.repo.Movida
 import com.blair.cumpleanos.repo.Repositorio
 import java.time.LocalDate
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -102,7 +106,12 @@ class ListaViewModel(
     /** Para el selector de borrado: quien tiene historial y cuanto. */
     val conHistorial: StateFlow<List<PersonaConHistorial>> = db.cumpleDao().conHistorial().estado()
 
-    val historial: StateFlow<List<CumpleUi>> =
+    private val _busqueda = MutableStateFlow("")
+    val busqueda: StateFlow<String> = _busqueda
+
+    private val consulta = _busqueda.map { normalizar(it) }.distinctUntilChanged()
+
+    private val delRango =
         combine(_mes, _porAnio) { ym, anual -> ym to anual }
             .flatMapLatest { (ym, anual) ->
                 val desde = if (anual) LocalDate.of(ym.year, 1, 1) else ym.atDay(1)
@@ -111,7 +120,24 @@ class ListaViewModel(
                     desde = desde.toEpochDay().toInt(),
                     hasta = hasta.toEpochDay().toInt(),
                 )
+            }
+
+    /** Normalizado al llegar de Room, no por tecleo. */
+    private val todosConClave =
+        db.cumpleDao().saludadosTodos().map { l -> l.map { ConClave(it, normalizar(it.nombre)) } }
+
+    /**
+     * Sin texto: el mes o año elegido. Con texto: TODO el historial, sin rango;
+     * si no, buscar a alguien saludado en marzo parado en octubre no lo encuentra.
+     */
+    val historial: StateFlow<List<CumpleUi>> =
+        consulta.map { it.isEmpty() }.distinctUntilChanged()
+            .flatMapLatest { vacia ->
+                if (vacia) delRango
+                else combine(todosConClave, consulta) { filas, q -> filtrarPorNombre(filas, q) }
             }.estado()
+
+    fun buscar(texto: String) { _busqueda.value = texto.take(60) }
 
     private fun filas() = db.cumpleDao().abiertos().map { lista ->
         val hoy = hoy()

@@ -160,6 +160,7 @@ class MainActivity : ComponentActivity() {
         val historial by vm.historial.collectAsStateWithLifecycle()
         val mes by vm.mes.collectAsStateWithLifecycle()
         val porAnio by vm.porAnio.collectAsStateWithLifecycle()
+        val busqueda by vm.busqueda.collectAsStateWithLifecycle()
         val personaAbierta by vm.personaAbierta.collectAsStateWithLifecycle()
         val colision by vm.colision.collectAsStateWithLifecycle()
         val conHistorial by vm.conHistorial.collectAsStateWithLifecycle()
@@ -215,6 +216,8 @@ class MainActivity : ComponentActivity() {
                     onMesAnterior = vm::mesAnterior,
                     onMesSiguiente = vm::mesSiguiente,
                     onAlternarPorAnio = vm::alternarPorAnio,
+                    busqueda = busqueda,
+                    onBuscar = vm::buscar,
                     modifier = Modifier.padding(innerPadding),
                 )
             }
