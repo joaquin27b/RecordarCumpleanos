@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -48,38 +49,66 @@ import com.google.android.gms.ads.nativead.MediaView
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdOptions
 import com.google.android.gms.ads.nativead.NativeAdView
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 
 private const val TAG = "Nativo"
 
 /**
- * Donde puede ir un nativo, por prioridad: 1 gana. Nunca hay dos visibles: dos a
- * la vez es violacion de politica de AdMob (el banner de abajo es otro formato).
+ * Donde puede ir un nativo. ALTA y HOJA tapan la lista: de esos se muestra uno
+ * solo, el de mayor prioridad (1 gana).
+ *
+ * Los [enLista] no compiten: cada uno se pide la primera vez que su lugar queda
+ * en pantalla y desde ahi queda FIJO. Sacar y poner anuncios al scrollear corria
+ * el contenido (temblaba) y el validador de AdMob marcaba la vista que se iba.
  */
-enum class LugarNativo(val prioridad: Int) {
-    /** Dentro de la tarjeta de asistencia, si hay una pendiente. */
-    ASISTENCIA(1),
+enum class LugarNativo(val prioridad: Int, val tamano: TamanoNativo, val enLista: Boolean = false) {
+    /** AltaPantalla, debajo de Guardar. Tapa la lista entera: gana a todos. */
+    ALTA(1, TamanoNativo.MINI),
 
-    /** Al pie de una hoja abierta: persona, regalo, periodo del historial. */
-    HOJA(2),
+    /** Al pie de una hoja abierta: persona, regalo, periodo. Tapa la lista. */
+    HOJA(2, TamanoNativo.GRANDE),
 
-    /** AltaPantalla, debajo de Guardar. */
-    ALTA(3),
+    /** Debajo de la tarjeta de asistencia, afuera de ella. */
+    ASISTENCIA(3, TamanoNativo.MINI, enLista = true),
 
-    /** Arriba de la seccion HISTORIAL. */
-    HISTORIAL(4),
+    /** Entre los cumpleaños de este año y los del proximo. */
+    ESTE_ANIO(4, TamanoNativo.MINI, enLista = true),
+
+    /** Justo antes de la seccion PERSONAS. */
+    PERSONAS(5, TamanoNativo.MINI, enLista = true),
+
+    /** Justo antes de la seccion HISTORIAL. */
+    HISTORIAL(6, TamanoNativo.MINI, enLista = true),
+
+    /** Al final de todo, debajo del historial. */
+    FINAL(7, TamanoNativo.MINI, enLista = true),
+}
+
+enum class TamanoNativo {
+    /** Una fila chata: icono, etiqueta, titulo y CTA. Sin media. */
+    MINI,
+
+    /** Como el grande, con el media topeado a 140dp. */
+    MEDIANO,
+
+    /** Con el media a su aspecto. */
+    GRANDE,
 }
 
 /**
  * Coordinador con scope de pantalla. Cada lugar se anota mientras esta en
- * composicion; solo el de mayor prioridad tiene anuncio y solo ese se pide.
+ * composicion. De ALTA y HOJA solo se pide el activo; los de la lista, al verse.
  *
  * El NativeAd vive ACA, no en la fila de la LazyColumn: la fila solo lo dibuja.
  * Adentro de un item se destruiria y recrearia al scrollear, y con un nativo
  * cada recreacion es una request nueva: invalid traffic, el error del banner.
  *
- * Un lugar tapado por otro de mas prioridad (la lista con una hoja abierta) se
- * PAUSA: conserva su anuncio sin mostrarlo y al cerrarse la hoja vuelve el
- * mismo, sin pedir otro. Se destruye cuando el lugar sale de composicion.
+ * Con una hoja o el alta abiertos la lista queda TAPADA: sus anuncios siguen en
+ * su lugar pero invisibles, y al cerrar vuelven los mismos sin pedir otros. Se
+ * destruyen cuando el lugar sale de composicion.
  */
 @Stable
 class CoordinadorNativos(private val ctx: Context, private val pedir: Boolean) {
@@ -90,10 +119,21 @@ class CoordinadorNativos(private val ctx: Context, private val pedir: Boolean) {
     /** Fallo una vez: no se reintenta mientras el lugar siga en pantalla. */
     private val fallidos = mutableSetOf<LugarNativo>()
 
-    val activo: LugarNativo? get() = anotados.keys.minByOrNull { it.prioridad }
+    /** El de ALTA/HOJA que se muestra; null si no hay ninguno abierto. */
+    val activo: LugarNativo? get() = anotados.keys.filter { !it.enLista }.minByOrNull { it.prioridad }
 
-    /** El anuncio a dibujar en [lugar], o null: no es el activo, o no cargo. */
-    fun anuncio(lugar: LugarNativo): NativeAd? = if (activo == lugar) anuncios[lugar] else null
+    /** Hay una hoja o el alta encima: los de la lista no se ven. */
+    val listaTapada: Boolean get() = activo != null
+
+    /** Los lugares de la lista en pantalla, al detenerse el scroll: se piden los que falten. */
+    fun enPantalla(visibles: Set<LugarNativo>) {
+        if (listaTapada) return
+        visibles.filter { it.enLista && it in anotados }.forEach { pedir(it) }
+    }
+
+    /** El anuncio a dibujar en [lugar], o null: no cargo, o es de ALTA/HOJA y no es el activo. */
+    fun anuncio(lugar: LugarNativo): NativeAd? =
+        if (lugar.enLista || activo == lugar) anuncios[lugar] else null
 
     fun anotar(lugar: LugarNativo) {
         anotados[lugar] = (anotados[lugar] ?: 0) + 1
@@ -113,9 +153,13 @@ class CoordinadorNativos(private val ctx: Context, private val pedir: Boolean) {
         }
     }
 
-    /** Pide SOLO para el activo, y solo si no tiene anuncio ni pedido en curso. */
+    /** Pide para el activo de ALTA/HOJA, si hace falta. */
     fun pedirSiHaceFalta() {
-        val lugar = activo ?: return
+        activo?.let { pedir(it) }
+    }
+
+    /** Una request para [lugar], solo si no tiene anuncio, ni pedido en curso, ni fallo. */
+    private fun pedir(lugar: LugarNativo) {
         if (!pedir || lugar in anuncios || lugar in enCurso || lugar in fallidos) return
         enCurso += lugar
         Log.i(TAG, "request lugar=$lugar")
@@ -150,13 +194,44 @@ class CoordinadorNativos(private val ctx: Context, private val pedir: Boolean) {
 
 private val LocalNativos = staticCompositionLocalOf<CoordinadorNativos?> { null }
 
+private const val ESPERA_PEDIDO_MS = 400L
+
+/**
+ * Le avisa al coordinador que lugares de la lista estan en pantalla. Cada lugar
+ * tiene un ancla: la fila junto a la que va su anuncio, que existe aunque el
+ * anuncio no. Al salir de composicion (se abre el alta) no queda ninguno.
+ *
+ * Se mira SOLO cuando el scroll se detiene (y una vez al haber filas): un lugar
+ * que se pasa de largo scrolleando rapido no llega a pedir.
+ */
+@Composable
+fun LugaresEnPantalla(estado: LazyListState, anclas: Map<Any, LugarNativo>) {
+    val coordinador = LocalNativos.current ?: return
+    LaunchedEffect(estado, anclas) {
+        snapshotFlow { estado.isScrollInProgress || estado.layoutInfo.visibleItemsInfo.isEmpty() }
+            .distinctUntilChanged()
+            .filter { quieto -> !quieto }
+            .collect {
+                coordinador.enPantalla(estado.layoutInfo.visibleItemsInfo.mapNotNullTo(mutableSetOf()) { anclas[it.key] })
+            }
+    }
+}
+
+/** True con una hoja o el alta encima de la lista. */
+@Composable
+fun listaTapada(): Boolean = LocalNativos.current?.listaTapada ?: false
+
 /** Una pantalla con su coordinador. Al salir de composicion se destruye todo lo que tenga. */
 @Composable
 fun PantallaConNativos(contenido: @Composable () -> Unit) {
     val ctx = LocalContext.current
     val coordinador = remember { CoordinadorNativos(ctx, BuildConfig.PEDIR_ANUNCIO) }
     LaunchedEffect(coordinador) {
-        snapshotFlow { coordinador.activo }.collect { coordinador.pedirSiHaceFalta() }
+        // Un lugar que se pasa de largo al scrollear rapido no llega a pedir.
+        snapshotFlow { coordinador.activo }.collectLatest {
+            delay(ESPERA_PEDIDO_MS)
+            coordinador.pedirSiHaceFalta()
+        }
     }
     DisposableEffect(coordinador) { onDispose { coordinador.destruirTodo() } }
     CompositionLocalProvider(LocalNativos provides coordinador) { contenido() }
@@ -198,7 +273,7 @@ private const val TINTA_CTA = 0xFF1E1E22.toInt()
  * Solo se llama con un anuncio cargado: sin anuncio no hay tarjeta ni hueco.
  */
 @Composable
-fun TarjetaNativo(anuncio: NativeAd, modifier: Modifier = Modifier) {
+fun TarjetaNativo(anuncio: NativeAd, modifier: Modifier = Modifier, tamano: TamanoNativo = TamanoNativo.GRANDE) {
     val colores = ColoresNativo(
         texto = BlancoEscena.toArgb(),
         mutado = TextoSecundario.toArgb(),
@@ -208,17 +283,26 @@ fun TarjetaNativo(anuncio: NativeAd, modifier: Modifier = Modifier) {
     )
     val etiqueta = stringResource(R.string.anuncio_etiqueta)
     val forma = RoundedCornerShape(24.dp)
+    val caja = modifier
+        .fillMaxWidth()
+        .clip(forma)
+        .background(Escenario1.copy(alpha = 0.55f))
+        .border(1.dp, EscenarioBorde.copy(alpha = 0.6f), forma)
+    if (tamano == TamanoNativo.MINI) {
+        AndroidView(
+            factory = { c -> VistaNativoMini(c) },
+            update = { it.mostrar(anuncio, colores, etiqueta) },
+            onRelease = { it.raiz.destroy() },
+            modifier = caja.padding(horizontal = 12.dp, vertical = 8.dp),
+        )
+        return
+    }
     AndroidView(
-        factory = { c -> VistaNativo(c) },
+        factory = { c -> VistaNativo(c, altoMaxMedia = if (tamano == TamanoNativo.MEDIANO) 140 else null) },
         update = { it.mostrar(anuncio, colores, etiqueta) },
         // Libera la VISTA; el NativeAd lo destruye el coordinador.
         onRelease = { it.raiz.destroy() },
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(forma)
-            .background(Escenario1.copy(alpha = 0.55f))
-            .border(1.dp, EscenarioBorde.copy(alpha = 0.6f), forma)
-            .padding(16.dp),
+        modifier = caja.padding(16.dp),
     )
 }
 
@@ -226,20 +310,25 @@ fun TarjetaNativo(anuncio: NativeAd, modifier: Modifier = Modifier) {
  * Mide su hijo con el alto que pide la relacion de aspecto del media: el
  * MediaView viene con cualquiera. Nunca menos de 120dp, el minimo de AdMob.
  */
-private class CajaAspecto(ctx: Context) : FrameLayout(ctx) {
+private class CajaAspecto(ctx: Context, private val altoMaxDp: Int?) : FrameLayout(ctx) {
     var aspecto = 0f
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val ancho = MeasureSpec.getSize(widthMeasureSpec)
-        if (aspecto <= 0f || ancho == 0) return super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        val minimo = (120 * resources.displayMetrics.density).toInt()
-        val alto = maxOf((ancho / aspecto).toInt(), minimo)
+        val densidad = resources.displayMetrics.density
+        val tope = altoMaxDp?.let { (it * densidad).toInt() }
+        // Sin aspecto todavia y sin tope: que el media decida.
+        if (ancho == 0 || (aspecto <= 0f && tope == null)) return super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        val natural = if (aspecto > 0f) (ancho / aspecto).toInt() else Int.MAX_VALUE
+        val minimo = (120 * densidad).toInt()
+        // Con tope, FIT_CENTER achica la imagen entera: no se recorta.
+        val alto = maxOf(minOf(natural, tope ?: Int.MAX_VALUE), minimo)
         super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(alto, MeasureSpec.EXACTLY))
     }
 }
 
 /** La NativeAdView armada en codigo, sin layout XML. Adaptada de Por Vencer. */
-private class VistaNativo(ctx: Context) : LinearLayout(ctx) {
+private class VistaNativo(ctx: Context, altoMaxMedia: Int?) : LinearLayout(ctx) {
     private fun dp(v: Int) = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics,
     ).toInt()
@@ -250,7 +339,7 @@ private class VistaNativo(ctx: Context) : LinearLayout(ctx) {
     private val titulo = TextView(ctx)
     private val anunciante = TextView(ctx)
     private val cuerpo = TextView(ctx)
-    private val caja = CajaAspecto(ctx)
+    private val caja = CajaAspecto(ctx, altoMaxMedia)
     private val media = MediaView(ctx)
     private val accion = TextView(ctx)
 
@@ -349,6 +438,94 @@ private class VistaNativo(ctx: Context) : LinearLayout(ctx) {
         caja.aspecto = contenidoMedia?.aspectRatio ?: 0f
         if (contenidoMedia != null) media.mediaContent = contenidoMedia
         caja.visibility = if (contenidoMedia == null) GONE else VISIBLE
+        raiz.setNativeAd(ad)
+    }
+}
+
+/**
+ * La expresion minima de un nativo, como el "small template" de Google: UNA fila
+ * chata con icono, etiqueta "Anuncio", titulo y CTA. Sin media.
+ *
+ * Nada se corta: todo vive dentro de la NativeAdView y el alto lo pone el
+ * contenido (el titulo usa hasta dos lineas antes que truncarse). El CTA deja
+ * libre la esquina de arriba a la derecha, donde el SDK pone AdChoices.
+ */
+private class VistaNativoMini(ctx: Context) : LinearLayout(ctx) {
+    private fun dp(v: Int) = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics,
+    ).toInt()
+
+    val raiz = NativeAdView(ctx)
+    private val etiqueta = TextView(ctx)
+    private val icono = ImageView(ctx)
+    private val titulo = TextView(ctx)
+    private val accion = TextView(ctx)
+
+    init {
+        val fila = LinearLayout(ctx).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            minimumHeight = dp(36)
+        }
+        etiqueta.apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(dp(5), dp(1), dp(5), dp(1))
+        }
+        fila.addView(etiqueta, LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { marginEnd = dp(8) })
+        icono.adjustViewBounds = true
+        fila.addView(icono, LayoutParams(dp(28), dp(28)).apply { marginEnd = dp(8) })
+        titulo.apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            maxLines = 2
+        }
+        fila.addView(titulo, LayoutParams(0, WRAP_CONTENT, 1f))
+        accion.apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(dp(12), 0, dp(12), 0)
+        }
+        fila.addView(
+            accion,
+            LayoutParams(WRAP_CONTENT, dp(30)).apply {
+                marginStart = dp(8)
+                marginEnd = dp(20)
+            },
+        )
+
+        raiz.addView(fila, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        raiz.headlineView = titulo
+        raiz.iconView = icono
+        raiz.callToActionView = accion
+        addView(raiz, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+    }
+
+    private var actual: NativeAd? = null
+
+    fun mostrar(ad: NativeAd, c: ColoresNativo, textoEtiqueta: String) {
+        etiqueta.text = textoEtiqueta
+        etiqueta.setTextColor(c.etiqueta)
+        etiqueta.background = GradientDrawable().apply {
+            cornerRadius = dp(5).toFloat()
+            setStroke(dp(1), c.etiqueta)
+        }
+        titulo.setTextColor(c.texto)
+        accion.setTextColor(c.textoBoton)
+        accion.background = GradientDrawable().apply {
+            cornerRadius = dp(15).toFloat()
+            setColor(c.boton)
+        }
+        // Se vincula una vez por anuncio: recomponer no lo vuelve a registrar.
+        if (actual === ad) return
+        actual = ad
+
+        titulo.text = ad.headline
+        icono.setImageDrawable(ad.icon?.drawable)
+        icono.visibility = if (ad.icon == null) GONE else VISIBLE
+        accion.text = ad.callToAction
+        accion.visibility = if (ad.callToAction.isNullOrBlank()) GONE else VISIBLE
         raiz.setNativeAd(ad)
     }
 }

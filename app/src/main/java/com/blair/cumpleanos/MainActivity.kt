@@ -16,6 +16,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
@@ -37,30 +38,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.blair.cumpleanos.datos.CumpleUi
 import com.blair.cumpleanos.notif.EXTRA_ASISTENCIA
 import com.blair.cumpleanos.notif.TickWorker
 import com.blair.cumpleanos.ui.AltaPantalla
 import com.blair.cumpleanos.ui.BannerAdaptativo
 import com.blair.cumpleanos.ui.BotonPrincipal
 import com.blair.cumpleanos.ui.Festejo
+import com.blair.cumpleanos.ui.FilaCumple
 import com.blair.cumpleanos.ui.FranjaBanner
 import com.blair.cumpleanos.ui.HojaPersona
 import com.blair.cumpleanos.ui.HojaRegalo
-import com.blair.cumpleanos.ui.FilaCumple
-import com.blair.cumpleanos.datos.CumpleUi
 import com.blair.cumpleanos.ui.ListaPantalla
 import com.blair.cumpleanos.ui.ListaViewModel
+import com.blair.cumpleanos.ui.LugarNativo
 import com.blair.cumpleanos.ui.PantallaConNativos
 import com.blair.cumpleanos.ui.SplashPantalla
 import com.blair.cumpleanos.ui.esVacio
 import com.blair.cumpleanos.ui.escena.Escenario
 import com.blair.cumpleanos.ui.escena.Intensidad
+import com.blair.cumpleanos.ui.nativoEn
 import com.blair.cumpleanos.ui.theme.RecordarCumpleanosTheme
 
 class MainActivity : ComponentActivity() {
@@ -198,6 +202,21 @@ class MainActivity : ComponentActivity() {
         // guarda recien al confirmar.
         var aSaludar by remember { mutableStateOf<FilaCumple?>(null) }
         var regaloHistorial by remember { mutableStateOf<CumpleUi?>(null) }
+        // FUERA del if (enAlta) y de la LazyColumn: con el alta abierta la lista sale
+        // de composicion pero sus lugares siguen anotados, asi el coordinador los
+        // PAUSA (ALTA gana) en vez de destruirlos y pedir otros al volver.
+        // App sin datos: ni estos ni el del alta. La primera vez, solo el banner.
+        val listaVacia = esVacio(pasados, proximos, personas) && conHistorial.isEmpty()
+        // Anotados no es pedidos: de estos se pide solo el que esta en pantalla.
+        val nativosLista = buildMap {
+            if (!listaVacia) {
+                if (asistencia != null) put(LugarNativo.ASISTENCIA, nativoEn(LugarNativo.ASISTENCIA))
+                put(LugarNativo.ESTE_ANIO, nativoEn(LugarNativo.ESTE_ANIO))
+                put(LugarNativo.PERSONAS, nativoEn(LugarNativo.PERSONAS))
+                put(LugarNativo.HISTORIAL, nativoEn(LugarNativo.HISTORIAL))
+                put(LugarNativo.FINAL, nativoEn(LugarNativo.FINAL))
+            }
+        }
 
         Scaffold(
             // Transparente: el Escenario de atras es el fondo.
@@ -212,6 +231,10 @@ class MainActivity : ComponentActivity() {
                         onClick = { onAlta(true) },
                         icono = Icons.Filled.Add,
                         destacado = true,
+                        // El halo baja hasta 30dp bajo el boton y el Scaffold deja
+                        // 16dp: sin esto pisa el banner, y tapar un anuncio con UI
+                        // de la app es violacion de politica.
+                        modifier = Modifier.padding(bottom = 16.dp),
                     )
                 }
             },
@@ -223,7 +246,12 @@ class MainActivity : ComponentActivity() {
                         onAlta(false)
                     },
                     onCancelar = { onAlta(false) },
-                    modifier = Modifier.padding(innerPadding),
+                    conAnuncio = !listaVacia,
+                    // consumeWindowInsets: el imePadding del alta descuenta lo que
+                    // ya resto el Scaffold (banner y barra) y no suma el doble.
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .consumeWindowInsets(innerPadding),
                 )
             } else {
                 ListaPantalla(
@@ -250,6 +278,7 @@ class MainActivity : ComponentActivity() {
                     onResponderAsistencia = vm::responderAsistencia,
                     onAsistenciaMostrada = vm::asistenciaMostrada,
                     irArriba = pedida,
+                    nativos = nativosLista,
                     modifier = Modifier.padding(innerPadding),
                 )
             }

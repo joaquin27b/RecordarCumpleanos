@@ -408,7 +408,10 @@ fun DestelloIcono(color: Color, tam: Dp, modifier: Modifier = Modifier) {
     }
 }
 
-/** Encabezado de seccion: bold, en color, con un destello al final de la linea. */
+/**
+ * Encabezado de seccion: bold, en color, con un destello al final y una linea
+ * debajo que se apaga hacia la derecha: marca donde empieza la seccion.
+ */
 @Composable
 fun EncabezadoSeccion(
     texto: String,
@@ -416,23 +419,34 @@ fun EncabezadoSeccion(
     modifier: Modifier = Modifier,
     accion: @Composable RowScope.() -> Unit = {},
 ) {
-    Row(
+    Column(
         modifier
             .fillMaxWidth()
             .padding(top = 22.dp, bottom = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            texto.uppercase(),
-            color = color,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 0.2.sp,
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                texto.uppercase(),
+                color = color,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.2.sp,
+            )
+            Spacer(Modifier.width(8.dp))
+            DestelloIcono(color, 14.dp)
+            Spacer(Modifier.weight(1f))
+            accion()
+        }
+        Spacer(Modifier.height(6.dp))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(
+                    Brush.horizontalGradient(listOf(color.copy(alpha = 0.9f), color.copy(alpha = 0.35f), Color.Transparent)),
+                ),
         )
-        Spacer(Modifier.width(8.dp))
-        DestelloIcono(color, 14.dp)
-        Spacer(Modifier.weight(1f))
-        accion()
     }
 }
 

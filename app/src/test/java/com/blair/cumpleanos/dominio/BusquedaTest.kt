@@ -30,6 +30,15 @@ class BusquedaTest {
         assertEquals(emptyList<String>(), filtrarPorNombre(f, normalizar("pez")))
     }
 
+    @Test fun `los emojis no cuentan`() {
+        assertEquals("ana", normalizar("Ana 🎂"))
+        assertEquals("ana lopez", normalizar("👩🏽‍🦱 Ana  López 🇦🇷"))
+        assertEquals("", normalizar("🎉"))
+        val f = listOf(ConClave("Patry 💃", normalizar("Patry 💃")))
+        assertEquals(listOf("Patry 💃"), filtrarPorNombre(f, normalizar("PATRY")))
+        assertEquals(listOf("Patry 💃"), filtrarPorNombre(f, normalizar("pátry 🎉")))
+    }
+
     @Test fun `la I turca no rompe la comparacion`() {
         val antes = java.util.Locale.getDefault()
         try {

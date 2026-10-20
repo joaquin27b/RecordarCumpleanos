@@ -50,9 +50,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -78,6 +80,8 @@ import com.blair.cumpleanos.dominio.tiempo
 import com.blair.cumpleanos.dominio.diaDelMes
 import com.blair.cumpleanos.dominio.edad
 import com.blair.cumpleanos.dominio.normalizar
+import com.blair.cumpleanos.dominio.ConClave
+import com.blair.cumpleanos.dominio.filtrarPorNombre
 import com.blair.cumpleanos.ui.escena.TituloCromado
 import com.blair.cumpleanos.ui.escena.Velita
 import com.blair.cumpleanos.ui.escena.VelitaEnEscenario
@@ -94,7 +98,7 @@ import java.time.YearMonth
 import java.util.Locale
 
 /** Reserva bajo la ultima fila para el FAB destacado y su glow. */
-private val ALTO_PIE = 150.dp
+private val ALTO_PIE = 200.dp
 
 /** Hasta cuantos dias antes la pildora va dorada. Mas lejos, violeta neutra. */
 private const val DIAS_DESTACADO = 30
@@ -118,6 +122,8 @@ private sealed interface Item {
     data class Grupo(val h: FilaLista.Encabezado) : Item { override val clave = "g" + h.anio }
     data class Cumple(val f: FilaCumple) : Item { override val clave = "c" + f.c.id }
     data class Personas(val lista: List<Persona>) : Item { override val clave = "personas" }
+    data object BuscadorPersonas : Item { override val clave = "buscadorPersonas" }
+    data class PersonasSinResultados(val consulta: String) : Item { override val clave = "personasSinResultados" }
     data object SelectorHistorial : Item { override val clave = "ctrlHist" }
     data object Buscador : Item { override val clave = "buscador" }
     data object BuscandoTodo : Item { override val clave = "buscandoTodo" }
@@ -126,8 +132,8 @@ private sealed interface Item {
     data class Historial(val lista: List<CumpleUi>) : Item { override val clave = "histLista" }
     data class Vacio(val texto: Int, override val clave: String) : Item
     data object Pie : Item { override val clave = "pie" }
-    /** Clave estable: Compose no lo trata como fila nueva. El anuncio vive afuera. */
-    data object Nativo : Item { override val clave = "nativoHistorial" }
+    /** Clave estable por lugar: Compose no lo trata como fila nueva. El anuncio vive afuera. */
+    data class Nativo(val lugar: LugarNativo, val anuncio: NativeAd) : Item { override val clave = "nativo" + lugar.name }
 }
 
 @Composable
@@ -166,6 +172,12 @@ fun ListaPantalla(
     onAsistenciaMostrada: (CumpleUi) -> Unit,
     /** Cambia al tocar la notificacion de asistencia: la lista vuelve arriba, a la tarjeta. */
     irArriba: Any?,
+    /**
+     * Los anota quien llama, FUERA de la LazyColumn y fuera del cambio a AltaPantalla:
+     * abrir el alta los pausa y al volver reaparecen los mismos, sin otra request.
+     * Solo trae anuncio el que manda; el resto es null y no se dibuja.
+     */
+    nativos: Map<LugarNativo, NativeAd?>,
     modifier: Modifier = Modifier,
 ) {
     val loc = locale()
@@ -174,20 +186,26 @@ fun ListaPantalla(
     var aBorrar by remember { mutableStateOf<Persona?>(null) }
     var borrarHist by remember { mutableStateOf(false) }
     var confirmar by remember { mutableStateOf<AccionHistorial?>(null) }
+    // Filtra mientras se escribe: lo que queda en la tarjeta son las sugerencias,
+    // y tocar una abre la persona. Mismo criterio que el historial: sin tildes,
+    // mayusculas ni emojis, por inicio de palabra.
+    var buscaPersona by rememberSaveable { mutableStateOf("") }
+    val clavesPersonas = remember(personas) { personas.map { ConClave(it, normalizar(it.nombre)) } }
+    val consultaPersona = normalizar(buscaPersona)
+    val personasVistas = if (consultaPersona.isEmpty()) personas else filtrarPorNombre(clavesPersonas, consultaPersona)
 
     if (esVacio(pasados, proximos, personas) && conHistorial.isEmpty()) {
         EstadoVacio(modifier)
         return
     }
 
-    // FUERA de la LazyColumn: el anuncio es de la pantalla, la fila solo lo dibuja.
-    // Scrollear no lo destruye ni lo vuelve a pedir.
-    val nativoAsistencia = if (asistencia != null) nativoEn(LugarNativo.ASISTENCIA) else null
-    val nativoHistorial = nativoEn(LugarNativo.HISTORIAL)
-
     val items = buildList {
+        fun nativo(lugar: LugarNativo) = nativos[lugar]?.let { add(Item.Nativo(lugar, it)) }
         add(Item.Cabecera)
-        asistencia?.let { add(Item.Asistencia(it)) }
+        asistencia?.let {
+            add(Item.Asistencia(it))
+            nativo(LugarNativo.ASISTENCIA)
+        }
         if (pasados.isNotEmpty()) {
             add(Item.Seccion(R.string.sec_pasados, RojoCta, "secPasados"))
             pasados.forEach { add(Item.Cumple(it)) }
@@ -196,15 +214,20 @@ fun ListaPantalla(
         if (proximos.isEmpty()) add(Item.Vacio(R.string.lista_vacia, "vacioProximos"))
         proximos.forEach { f ->
             when (f) {
-                is FilaLista.Encabezado -> add(Item.Grupo(f))
+                is FilaLista.Encabezado -> {
+                    if (!f.esteAnio) nativo(LugarNativo.ESTE_ANIO)
+                    add(Item.Grupo(f))
+                }
                 is FilaLista.Dato -> add(Item.Cumple(f.fila))
             }
         }
         if (personas.isNotEmpty()) {
+            nativo(LugarNativo.PERSONAS)
             add(Item.Seccion(R.string.sec_personas, Dorado, "secPersonas"))
-            add(Item.Personas(personas))
+            add(Item.BuscadorPersonas)
+            add(if (personasVistas.isEmpty()) Item.PersonasSinResultados(buscaPersona.trim()) else Item.Personas(personasVistas))
         }
-        if (nativoHistorial != null) add(Item.Nativo)
+        nativo(LugarNativo.HISTORIAL)
         add(Item.Seccion(R.string.sec_historial, CianNeon, "secHistorial"))
         add(Item.Buscador)
         // Buscando, el rango no aplica: sus controles mentirian.
@@ -212,13 +235,26 @@ fun ListaPantalla(
         // "No hay saludos" y "nadie se llama asi" son cosas distintas.
         if (historial.isEmpty()) add(if (buscando) Item.SinResultados else Item.Vacio(R.string.hist_vacio, "vacioHist"))
         else add(Item.Historial(historial))
+        nativo(LugarNativo.FINAL)
         add(Item.Pie)
+    }
+    // El ancla de cada lugar es la fila junto a la que va su anuncio: existe
+    // aunque el anuncio todavia no, y por ella se sabe si el lugar esta a la vista.
+    val anclas = buildMap<Any, LugarNativo> {
+        asistencia?.let { put("asist" + it.id, LugarNativo.ASISTENCIA) }
+        proximos.firstOrNull { it is FilaLista.Encabezado && !it.esteAnio }
+            ?.let { put("g" + (it as FilaLista.Encabezado).anio, LugarNativo.ESTE_ANIO) }
+        if (personas.isNotEmpty()) put("secPersonas", LugarNativo.PERSONAS)
+        put("secHistorial", LugarNativo.HISTORIAL)
+        put("pie", LugarNativo.FINAL)
     }
 
     val vistos = remember { mutableSetOf<Any>() }
     val inicio = remember { System.currentTimeMillis() }
 
     val estadoLista = rememberLazyListState()
+    val tapada = listaTapada()
+    LugaresEnPantalla(estadoLista, anclas)
     LaunchedEffect(irArriba) { if (irArriba != null) estadoLista.animateScrollToItem(0) }
     // Mostrarla es preguntar: se anota el dia, y la notificacion ya no sale.
     asistencia?.let { c -> LaunchedEffect(c.id) { onAsistenciaMostrada(c) } }
@@ -233,8 +269,16 @@ fun ListaPantalla(
             val anim = Modifier.entrada(item.clave, i, vistos, inicio)
             when (item) {
                 Item.Cabecera -> Cabecera(cumplesDelMes, loc, anim)
-                is Item.Asistencia -> TarjetaAsistencia(item.c, loc, onResponderAsistencia, nativoAsistencia, anim)
-                Item.Nativo -> nativoHistorial?.let { TarjetaNativo(it, anim.padding(top = 12.dp)) }
+                is Item.Asistencia -> TarjetaAsistencia(item.c, loc, onResponderAsistencia, anim)
+                // Sin animacion de entrada: un anuncio no arranca transparente ni corrido.
+                // Tapada por una hoja, invisible pero en su lugar: nada se corre.
+                is Item.Nativo -> TarjetaNativo(
+                    item.anuncio,
+                    Modifier
+                        .padding(vertical = 4.dp)
+                        .alpha(if (tapada) 0f else 1f),
+                    item.lugar.tamano,
+                )
                 is Item.Seccion -> EncabezadoSeccion(
                     stringResource(item.texto) + if (item.clave == "secPersonas") " (${personas.size})" else "",
                     item.color,
@@ -266,7 +310,14 @@ fun ListaPantalla(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = anim.padding(vertical = 8.dp, horizontal = 4.dp),
                 )
-                Item.Buscador -> BuscadorHistorial(busqueda, onBuscar, anim)
+                Item.Buscador -> Buscador(busqueda, onBuscar, stringResource(R.string.hist_buscar), anim)
+                Item.BuscadorPersonas -> Buscador(buscaPersona, { buscaPersona = it }, stringResource(R.string.per_buscar), anim)
+                is Item.PersonasSinResultados -> Text(
+                    stringResource(R.string.hist_sin_resultados, item.consulta),
+                    color = TextoSecundario,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = anim.padding(vertical = 8.dp, horizontal = 4.dp),
+                )
                 Item.BuscandoTodo -> Text(
                     stringResource(R.string.hist_buscando_todo),
                     color = TextoSecundario,
@@ -280,7 +331,8 @@ fun ListaPantalla(
                     modifier = anim.padding(vertical = 8.dp, horizontal = 4.dp),
                 )
                 // Al final del scroll el FAB no tapa la ultima fila: 60 de boton,
-                // 20 de glow, 16 de separacion del banner y aire.
+                // 30 de halo, 32 de separacion del banner y aire: el nativo del
+                // final sube entero por encima del boton.
                 Item.Pie -> Spacer(Modifier.height(ALTO_PIE))
             }
         }
@@ -720,11 +772,11 @@ private fun Modifier.barraDesplazamiento(scroll: ScrollState, riel: Color, color
  * sube el doble del teclado.
  */
 @Composable
-private fun BuscadorHistorial(texto: String, onCambio: (String) -> Unit, modifier: Modifier) {
+private fun Buscador(texto: String, onCambio: (String) -> Unit, etiqueta: String, modifier: Modifier) {
     CampoTexto(
         valor = texto,
         onCambio = onCambio,
-        etiqueta = stringResource(R.string.hist_buscar),
+        etiqueta = etiqueta,
         teclado = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Search),
         iconoInicio = { Icon(Icons.Filled.Search, contentDescription = null, tint = CianNeon) },
         iconoFin = if (texto.isEmpty()) null else {
@@ -810,7 +862,6 @@ private fun TarjetaAsistencia(
     c: CumpleUi,
     loc: Locale,
     onResponder: (cumpleId: Long, asistio: Boolean) -> Unit,
-    nativo: NativeAd?,
     modifier: Modifier,
 ) {
     Tarjeta(modifier, neon = HazFucsia, intenso = true) {
@@ -846,11 +897,6 @@ private fun TarjetaAsistencia(
                 onClick = { onResponder(c.id, false) },
                 modifier = Modifier.weight(1f),
             )
-        }
-        // Debajo y separado de Si/No: un toque apurado no cae en el anuncio.
-        nativo?.let {
-            Spacer(Modifier.height(20.dp))
-            TarjetaNativo(it)
         }
     }
 }

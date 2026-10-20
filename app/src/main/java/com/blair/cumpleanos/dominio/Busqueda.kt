@@ -7,7 +7,14 @@ private val MARCAS = "\\p{Mn}".toRegex()
 private val ESPACIOS = "\\s+".toRegex()
 
 /**
- * Forma comparable de un nombre: sin tildes, en minusculas, espacios colapsados.
+ * Emojis y lo que los arma: simbolos (So), tonos de piel (Sk), el keycap (Me), el
+ * ZWJ y las etiquetas de banderas (Cf) y los selectores de variacion. Por code
+ * point: el regex de Java ve el par sustituto como un solo caracter.
+ */
+private val EMOJIS = "[\\p{So}\\p{Sk}\\p{Me}\\p{Cf}\\uFE0E\\uFE0F]".toRegex()
+
+/**
+ * Forma comparable de un nombre: sin tildes, sin emojis, en minusculas, espacios colapsados.
  *
  * En Kotlin y no en SQL: LIKE y COLLATE NOCASE de SQLite solo pliegan ASCII y el
  * SQLite de Android no trae ICU, asi que "Á" nunca matchea "a" desde la query.
@@ -18,6 +25,7 @@ private val ESPACIOS = "\\s+".toRegex()
 fun normalizar(s: String): String =
     Normalizer.normalize(s, Normalizer.Form.NFD)
         .replace(MARCAS, "")
+        .replace(EMOJIS, "")
         .lowercase(Locale.ROOT)
         .trim()
         .replace(ESPACIOS, " ")

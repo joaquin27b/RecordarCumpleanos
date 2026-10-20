@@ -144,6 +144,7 @@
     </plurals>
     <string name="contador_mes">Este mes</string>
     <string name="hist_buscar">Buscar por nombre</string>
+    <string name="per_buscar">Buscar persona</string>
     <string name="hist_buscando_todo">Buscando en todo el historial</string>
     <string name="hist_elegir_periodo">Elegir el período</string>
     <string name="hist_elegir_mes_anio">Elegí mes y año</string>

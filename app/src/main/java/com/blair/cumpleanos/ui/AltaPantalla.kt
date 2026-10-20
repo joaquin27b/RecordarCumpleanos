@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -46,8 +47,10 @@ import java.time.LocalDate
  *
  * El calendario abre SIEMPRE en hoy y elige solo dia y mes; el año va aparte,
  * opcional, con un boton explicito para "no sé".
- * Sin imePadding: el Scaffold ya suma WindowInsets.ime y con los dos el
- * contenido sube el doble.
+ * imePadding UNA vez, aca: con bottomBar el Scaffold da de padding el alto del
+ * banner y NO el del teclado, y sin esto el final del formulario (el nativo)
+ * queda detras del teclado sin poder scrollearse. Quien llama hace
+ * consumeWindowInsets(innerPadding), asi no se cuenta dos veces.
  */
 @Composable
 fun AltaPantalla(
@@ -55,6 +58,8 @@ fun AltaPantalla(
         nombre: String, dia: Int, mes: Int, anioNacimiento: Int?, preavisos: String?, regaloPlan: String?, festejo: Int?,
     ) -> Unit,
     onCancelar: () -> Unit,
+    /** False con la app sin datos: la primera vez no hay mas anuncio que el banner. */
+    conAnuncio: Boolean,
     modifier: Modifier = Modifier,
 ) {
     BackHandler { onCancelar() }
@@ -71,13 +76,14 @@ fun AltaPantalla(
     var intento by rememberSaveable { mutableStateOf(false) }
 
     val validacion = validarAnio(if (sinAnio) "" else anioTexto, dia, mes, hoy)
-    // Al final del contenido, debajo de Guardar. Sin imePadding propio: el
-    // Scaffold ya resta el teclado y la columna scrollea hasta el anuncio.
-    val nativo = nativoEn(LugarNativo.ALTA)
+    // Al final del contenido, debajo de Guardar: con el teclado abierto la
+    // columna scrollea hasta el anuncio entero.
+    val nativo = if (conAnuncio) nativoEn(LugarNativo.ALTA) else null
 
     Column(
         modifier
             .fillMaxWidth()
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -145,7 +151,7 @@ fun AltaPantalla(
         }
         nativo?.let {
             Spacer(Modifier.height(16.dp))
-            TarjetaNativo(it)
+            TarjetaNativo(it, tamano = LugarNativo.ALTA.tamano)
         }
         Spacer(Modifier.height(96.dp))
     }
