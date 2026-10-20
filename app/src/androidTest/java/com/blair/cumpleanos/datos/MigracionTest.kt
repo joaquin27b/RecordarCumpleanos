@@ -66,11 +66,11 @@ class MigracionTest {
         ctx.deleteDatabase(NOMBRE)
     }
 
-    /** Mismo builder que CumpleanosApp, salvo la migracion, que el test elige. */
+    /** Mismo builder que CumpleanosApp, salvo la 1->2, que el test elige. La 2->3 va siempre. */
     private fun abrirRoom(migracion: Migration): BaseDatos =
         Room.databaseBuilder(ctx, BaseDatos::class.java, NOMBRE)
             .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
-            .addMigrations(migracion)
+            .addMigrations(migracion, MIGRACION_2_3)
             .build()
 
     /** 4 personas, 3 ocurrencias, 1 saludo con fecha. */
@@ -275,7 +275,8 @@ class MigracionTest {
             .build()
         try {
             val abiertos = runBlocking { room.cumpleDao().abiertosAhora() }
-            assertEquals(listOf(11L, 12L), abiertos.map { it.id })
+            // El orden lo decide la fecha, no el id: se comparan los ids.
+            assertEquals(listOf(11L, 12L), abiertos.map { it.id }.sorted())
             abiertos.forEach {
                 assertNull(it.asistio)
                 assertNull(it.asistenciaPreguntadaDia)
