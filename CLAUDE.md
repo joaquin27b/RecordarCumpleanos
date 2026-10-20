@@ -57,8 +57,19 @@ Migraciones registradas: `.addMigrations(MIGRACION_1_2, MIGRACION_2_3)`.
 - `MIGRACION_2_3` (1.1.1 → 1.2.0): `asistio`, `asistenciaPreguntadaDia`. Primer cambio
   de schema con testers sobre la v2.
 
-Publicado: 1.0.0 (v1) y 1.1.1 (versionCode 3, schema v2). En curso: 1.2.0
-(versionCode 4, schema v3).
+## Releases (versionCodes usados en Play)
+
+Play rechaza un versionCode ya subido en CUALQUIER pista (interna, cerrada,
+producción, o un borrador descartado). Antes de generar un AAB: subir el versionCode
+por encima del MAYOR de esta tabla y agregar la fila nueva.
+
+| versionCode | versionName | schema | Commit / tag | Estado |
+|-------------|-------------|--------|--------------|--------|
+| 1 | 1.0.0 | v1 | `v1.0.0` (9334fde) | publicado |
+| 2 | 1.1.x | v2 | — | subido |
+| 3 | 1.1.1 | v2 | 06a57ec | publicado |
+| 4 | 1.2.0 | v2 | b3c2859 (solo buscador) | **usado en Play**: no reutilizar |
+| 5 | 1.2.0 | v3 | `v1.2.0-vc5` | AAB generado 2026-10-20 |
 
 ## Modelo de datos
 

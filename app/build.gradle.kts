@@ -22,7 +22,7 @@ android {
         applicationId = "com.blair.cumpleanos"
         minSdk = 26
         targetSdk = 37
-        versionCode = 4
+        versionCode = 5
         versionName = "1.2.0"
         buildConfigField("boolean", "PEDIR_ANUNCIO", "true")
 
