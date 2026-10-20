@@ -40,13 +40,25 @@ que abrir la base que el usuario ya tiene y conservarla entera:
   `PRAGMA table_info` antes del ALTER, como en `MIGRACION_1_2`, para que repetirla no falle.
 - Nunca se edita una Migration ya publicada; se agrega la siguiente.
 - Antes de un AAB: `versionCode` mayor que el publicado, misma firma de release,
-  mismo applicationId y la migración probada (`MigracionTest`, en un emulador: es
-  instrumentado y `connectedAndroidTest` desinstala `.debug`).
+  mismo applicationId y la migración probada (`MigracionTest`, instrumentado).
+- `MigracionTest` en el teléfono **sin** `connectedAndroidTest`: respaldo de `.debug`
+  primero, después `adb install -r` del APK de app y del de androidTest y
+  `adb shell am instrument -w -e class com.blair.cumpleanos.datos.MigracionTest
+  com.blair.cumpleanos.debug.test/androidx.test.runner.AndroidJUnitRunner`. Así no se
+  desinstala nada. No hay emulador configurado.
+- Prueba de upgrade real: con la versión anterior instalada y datos cargados,
+  `adb install -r` encima y comparar las tablas antes/después (`run-as ... tar`).
 - Journal en TRUNCATE, no WAL: el backup copia `cumpleanos.db` sin el `-wal`.
   Las reglas de backup (`res/xml/`) incluyen la base y `ajustes.xml`.
 
-Estado actual: `@Database version = 2`, schemas `1.json` y `2.json`, única migración
-`MIGRACION_1_2` (agrega `regaloPlan`, `regaloReal`, `fechaFestejoDia`).
+Estado actual: `@Database version = 3`, schemas `1.json`, `2.json` y `3.json`.
+Migraciones registradas: `.addMigrations(MIGRACION_1_2, MIGRACION_2_3)`.
+- `MIGRACION_1_2` (v1.0.0 → 1.1.x): `regaloPlan`, `regaloReal`, `fechaFestejoDia`.
+- `MIGRACION_2_3` (1.1.1 → 1.2.0): `asistio`, `asistenciaPreguntadaDia`. Primer cambio
+  de schema con testers sobre la v2.
+
+Publicado: 1.0.0 (v1) y 1.1.1 (versionCode 3, schema v2). En curso: 1.2.0
+(versionCode 4, schema v3).
 
 ## Modelo de datos
 
@@ -60,7 +72,10 @@ null = default, "" = ninguno).
 (epochDay, única fuente de verdad temporal), `avisoUltimoDia?`, `saludado`,
 `saludadoDia?`, `anulado` (marcado por error: vuelve a pendiente pero sigue tachado en
 el historial), `regaloPlan?`, `regaloReal?` (se confirma al saludar),
-`fechaFestejoDia?` (null = sin festejo aparte).
+`fechaFestejoDia?` (null = sin festejo aparte), `asistio?` (fue al festejo de ESTA
+ocurrencia; null = sin responder), `asistenciaPreguntadaDia?` (epochDay en que se
+mostró la pregunta; distingue "no pregunté" de "pregunté y no contestó"). Mover el
+festejo borra la respuesta.
 
 Fechas como epochDay `Int` en todo el dominio.
 
@@ -76,6 +91,15 @@ Fechas como epochDay `Int` en todo el dominio.
   El "ya avisé" del festejo vive en **prefs** (`festejo_aviso_<cumpleId>`), no en la
   tabla.
 - Resumen del mes: el día 1 (o el primer tick del mes), silencio si no hay cumpleaños.
+- Asistencia al festejo (`dominio/Asistencia.kt`): se pregunta desde el día SIGUIENTE
+  al festejo y hasta 30 días después, si `asistio` es null. Notificación "¿Fuiste al
+  festejo de X?" una sola vez por ocurrencia (solo si `asistenciaPreguntadaDia` es
+  null), una por tick, la del festejo más reciente. Tocarla abre la app con la
+  tarjeta arriba (extra `asistencia` = cumpleId). En la app, UNA tarjeta, la más
+  reciente; mostrarla anota el día y ya no se notifica.
+- Espacios de ids de notificación: cumple = personaId, festejo = `1 shl 30` +
+  personaId, asistencia = `3 shl 29` + personaId, resumen = `Int.MAX_VALUE`. Todo en
+  el canal `cumple_v1` salvo el resumen.
 
 ## Diseño
 
@@ -86,7 +110,36 @@ dorado (`Dorado` #F8D818), rojo de acción (`RojoCta` #E03840), blanco de escena
 (`BlancoEscena`). Fuente Outfit empaquetada. Campos: `CampoTexto` (violeta translúcido,
 borde cian al enfocar). Textos en `values/` (inglés) y `values-es/`.
 
+## AdMob
+
+App ID en el manifiesto por `manifestPlaceholders["adAppId"]` (release
+`ca-app-pub-6760097434219921~8061744806`). No se duplica.
+
+| buildType | `AD_UNIT_BANNER` | `AD_UNIT_NATIVE` |
+|-----------|------------------|------------------|
+| debug     | prueba `…3940256099942544/9214589741` | prueba `…3940256099942544/2247696110` |
+| release   | `ca-app-pub-6760097434219921/3170801198` | `ca-app-pub-6760097434219921/8011490915` |
+| medicion  | prueba, y `PEDIR_ANUNCIO=false`: no pide nada | prueba, no pide |
+
+- **Banner**: adaptativo en el `bottomBar` del Scaffold, una instancia por sesión. No
+  se recrea al navegar ni al abrir hojas. **Nunca** `loadAd()` por acción del usuario:
+  es invalid traffic y suspende la cuenta entera. El refresco (60 s) se configura en
+  el panel de AdMob, no en el código.
+- **Nativos** (`ui/AnuncioNativo.kt`): **uno solo visible por pantalla**. Lo decide
+  `CoordinadorNativos` (scope de pantalla, `PantallaConNativos`) por prioridad:
+  1 tarjeta de asistencia, 2 hoja abierta, 3 AltaPantalla, 4 arriba del HISTORIAL.
+  Solo se pide el activo; el tapado se pausa (conserva su anuncio) y vuelve sin pedir
+  otro. Siempre en su propia tarjeta, con etiqueta "Anuncio" y CTA gris neutro (nunca
+  cian, degradé, dorado ni rojo). Nada de nativos "chicos" como separador, ni
+  intercalados cada N filas, ni en PERSONAS: es "ad mimicking app content".
+  Sin anuncio no se dibuja la tarjeta: sin hueco reservado.
+
 ## Errores que ya cometimos
+
+- **Anuncios dentro de un `LazyColumn`**: el item se destruye y se recrea al
+  scrollear, y cada recreación es una request nueva (invalid traffic). El anuncio
+  vive fuera del item (`nativoEn(...)` se llama fuera de la LazyColumn), el item solo
+  lo dibuja, con key estable, y `destroy()` va en el `onDispose` del dueño.
 
 - **`imePadding` duplicado**: el `Scaffold` de `MainActivity` ya suma `WindowInsets.ime`.
   Sumar `imePadding()` en una pantalla dentro de él sube el contenido el doble del
@@ -97,6 +150,11 @@ borde cian al enfocar). Textos en `values/` (inglés) y `values-es/`.
   como argumento del formato (`getQuantityString(id, n, n)`). Con una sola, el `%d` queda
   sin valor.
 - **`connectedAndroidTest`** desinstala `.debug` (ver arriba).
+- **LazyColumn dentro de LazyColumn** tira `IllegalStateException`. El historial va en
+  UNA fila: `Column` con `heightIn(max)` + `verticalScroll` y barra dibujada (patrón
+  de Por Vencer).
+- **Abrir otra carpeta**: ya se entregó una vez el relevamiento de Por Vencer creyendo
+  que era esta app. Verificar carpeta y applicationId antes de nada.
 
 ## Comprobaciones
 
