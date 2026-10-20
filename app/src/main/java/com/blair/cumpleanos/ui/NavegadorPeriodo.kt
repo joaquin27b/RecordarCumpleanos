@@ -3,6 +3,8 @@ package com.blair.cumpleanos.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -124,6 +126,7 @@ private fun HojaPeriodo(
     val loc = LocalConfiguration.current.locales[0]
     var anio by remember { mutableStateOf(mes.year) }
     var mesElegido by remember { mutableStateOf(mes.month) }
+    val nativo = nativoEn(LugarNativo.HOJA)
     ModalBottomSheet(
         onDismissRequest = onCerrar,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -135,6 +138,7 @@ private fun HojaPeriodo(
             Column(
                 Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -175,6 +179,10 @@ private fun HojaPeriodo(
                 )
                 TextButton(onClick = onCerrar, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                     Text(stringResource(R.string.accion_cancelar), color = CianNeon)
+                }
+                nativo?.let {
+                    Spacer(Modifier.height(6.dp))
+                    TarjetaNativo(it)
                 }
                 Spacer(Modifier.height(20.dp))
             }

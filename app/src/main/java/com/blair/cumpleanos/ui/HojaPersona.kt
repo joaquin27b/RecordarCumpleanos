@@ -88,6 +88,8 @@ fun HojaPersona(
     var confirmarHist by remember { mutableStateOf(false) }
 
     val validacion = validarAnio(if (sinAnio) "" else anioTexto, dia, mes, hoy)
+    // La hoja tapa la lista: su nativo pausa el de atras y al cerrarla vuelve aquel.
+    val nativo = nativoEn(LugarNativo.HOJA)
 
     ModalBottomSheet(
         onDismissRequest = onCerrar,
@@ -181,6 +183,10 @@ fun HojaPersona(
                 }
                 TextButton(onClick = { confirmarHist = true }) {
                     Text(stringResource(R.string.per_borrar_hist), color = RojoCta)
+                }
+                nativo?.let {
+                    Spacer(Modifier.height(12.dp))
+                    TarjetaNativo(it)
                 }
                 Spacer(Modifier.height(24.dp))
             }

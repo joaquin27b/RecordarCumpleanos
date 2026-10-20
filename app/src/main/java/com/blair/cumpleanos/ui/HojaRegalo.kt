@@ -21,6 +21,8 @@ import com.blair.cumpleanos.ui.theme.EscenarioBorde
 import com.blair.cumpleanos.ui.theme.HazFucsia
 import java.time.LocalDate
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -174,6 +176,7 @@ fun HojaRegalo(
 ) {
     var texto by rememberSaveable { mutableStateOf(inicial ?: "") }
     var asistio by rememberSaveable { mutableStateOf(asistioInicial) }
+    val nativo = nativoEn(LugarNativo.HOJA)
     ModalBottomSheet(
         onDismissRequest = onCerrar,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -186,6 +189,8 @@ fun HojaRegalo(
                 Modifier
                     .fillMaxWidth()
                     .imePadding()
+                    // Con el nativo al pie puede no entrar: scrollea en vez de cortarse.
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -230,6 +235,10 @@ fun HojaRegalo(
                 )
                 TextButton(onClick = onCerrar, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                     Text(stringResource(R.string.accion_cancelar), color = CianNeon)
+                }
+                nativo?.let {
+                    Spacer(Modifier.height(6.dp))
+                    TarjetaNativo(it)
                 }
                 Spacer(Modifier.height(20.dp))
             }

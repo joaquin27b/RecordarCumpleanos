@@ -48,12 +48,16 @@ android {
             versionNameSuffix = "-debug"
             // IDs de PRUEBA de Google: el unico build que se instala en el telefono.
             buildConfigField("String", "AD_UNIT_BANNER", "\"ca-app-pub-3940256099942544/9214589741\"")
+            // Native advanced de PRUEBA.
+            buildConfigField("String", "AD_UNIT_NATIVE", "\"ca-app-pub-3940256099942544/2247696110\"")
             manifestPlaceholders["adAppId"] = "ca-app-pub-3940256099942544~3347511713"
         }
         release {
             // Ad units propias de com.blair.cumpleanos.
             // Un clic propio con estos IDs suspende la cuenta AdMob entera.
             buildConfigField("String", "AD_UNIT_BANNER", "\"ca-app-pub-6760097434219921/3170801198\"")
+            // Native advanced, la misma para todos los lugares (tarjeta, hojas, alta, historial).
+            buildConfigField("String", "AD_UNIT_NATIVE", "\"ca-app-pub-6760097434219921/8011490915\"")
             manifestPlaceholders["adAppId"] = "ca-app-pub-6760097434219921~8061744806"
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
@@ -72,6 +76,7 @@ android {
             // Capturas de la ficha: la franja queda, vacia; "Anuncio de prueba" no.
             buildConfigField("boolean", "PEDIR_ANUNCIO", "false")
             buildConfigField("String", "AD_UNIT_BANNER", "\"ca-app-pub-3940256099942544/9214589741\"")
+            buildConfigField("String", "AD_UNIT_NATIVE", "\"ca-app-pub-3940256099942544/2247696110\"")
             manifestPlaceholders["adAppId"] = "ca-app-pub-3940256099942544~3347511713"
         }
     }

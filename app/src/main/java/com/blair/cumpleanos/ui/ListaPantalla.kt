@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.blair.cumpleanos.R
+import com.google.android.gms.ads.nativead.NativeAd
 import com.blair.cumpleanos.datos.CumpleUi
 import com.blair.cumpleanos.datos.Persona
 import com.blair.cumpleanos.datos.PersonaConHistorial
@@ -125,6 +126,8 @@ private sealed interface Item {
     data class Historial(val lista: List<CumpleUi>) : Item { override val clave = "histLista" }
     data class Vacio(val texto: Int, override val clave: String) : Item
     data object Pie : Item { override val clave = "pie" }
+    /** Clave estable: Compose no lo trata como fila nueva. El anuncio vive afuera. */
+    data object Nativo : Item { override val clave = "nativoHistorial" }
 }
 
 @Composable
@@ -177,6 +180,11 @@ fun ListaPantalla(
         return
     }
 
+    // FUERA de la LazyColumn: el anuncio es de la pantalla, la fila solo lo dibuja.
+    // Scrollear no lo destruye ni lo vuelve a pedir.
+    val nativoAsistencia = if (asistencia != null) nativoEn(LugarNativo.ASISTENCIA) else null
+    val nativoHistorial = nativoEn(LugarNativo.HISTORIAL)
+
     val items = buildList {
         add(Item.Cabecera)
         asistencia?.let { add(Item.Asistencia(it)) }
@@ -196,6 +204,7 @@ fun ListaPantalla(
             add(Item.Seccion(R.string.sec_personas, Dorado, "secPersonas"))
             add(Item.Personas(personas))
         }
+        if (nativoHistorial != null) add(Item.Nativo)
         add(Item.Seccion(R.string.sec_historial, CianNeon, "secHistorial"))
         add(Item.Buscador)
         // Buscando, el rango no aplica: sus controles mentirian.
@@ -224,7 +233,8 @@ fun ListaPantalla(
             val anim = Modifier.entrada(item.clave, i, vistos, inicio)
             when (item) {
                 Item.Cabecera -> Cabecera(cumplesDelMes, loc, anim)
-                is Item.Asistencia -> TarjetaAsistencia(item.c, loc, onResponderAsistencia, anim)
+                is Item.Asistencia -> TarjetaAsistencia(item.c, loc, onResponderAsistencia, nativoAsistencia, anim)
+                Item.Nativo -> nativoHistorial?.let { TarjetaNativo(it, anim.padding(top = 12.dp)) }
                 is Item.Seccion -> EncabezadoSeccion(
                     stringResource(item.texto) + if (item.clave == "secPersonas") " (${personas.size})" else "",
                     item.color,
@@ -800,6 +810,7 @@ private fun TarjetaAsistencia(
     c: CumpleUi,
     loc: Locale,
     onResponder: (cumpleId: Long, asistio: Boolean) -> Unit,
+    nativo: NativeAd?,
     modifier: Modifier,
 ) {
     Tarjeta(modifier, neon = HazFucsia, intenso = true) {
@@ -835,6 +846,11 @@ private fun TarjetaAsistencia(
                 onClick = { onResponder(c.id, false) },
                 modifier = Modifier.weight(1f),
             )
+        }
+        // Debajo y separado de Si/No: un toque apurado no cae en el anuncio.
+        nativo?.let {
+            Spacer(Modifier.height(20.dp))
+            TarjetaNativo(it)
         }
     }
 }

@@ -56,6 +56,7 @@ import com.blair.cumpleanos.ui.FilaCumple
 import com.blair.cumpleanos.datos.CumpleUi
 import com.blair.cumpleanos.ui.ListaPantalla
 import com.blair.cumpleanos.ui.ListaViewModel
+import com.blair.cumpleanos.ui.PantallaConNativos
 import com.blair.cumpleanos.ui.SplashPantalla
 import com.blair.cumpleanos.ui.esVacio
 import com.blair.cumpleanos.ui.escena.Escenario
@@ -149,6 +150,8 @@ class MainActivity : ComponentActivity() {
                         if (splash) {
                             SplashPantalla(encendido) { enSplash = false }
                         } else {
+                            // Coordinador de nativos con scope de pantalla: uno visible a la vez.
+                            PantallaConNativos {
                             Contenido(
                                 vm = vm,
                                 enAlta = enAlta,
@@ -159,6 +162,7 @@ class MainActivity : ComponentActivity() {
                                     festejo++
                                 },
                             )
+                            }
                         }
                     }
                     Festejo(festejo, onActivo = { festejando = it })

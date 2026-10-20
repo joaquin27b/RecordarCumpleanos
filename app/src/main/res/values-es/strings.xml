@@ -160,4 +160,5 @@
     <string name="asistencia_etiqueta">¿Fuiste al festejo?</string>
     <string name="asistencia_chip_si">Sí</string>
     <string name="asistencia_chip_no">No</string>
+    <string name="anuncio_etiqueta">Anuncio</string>
 </resources>

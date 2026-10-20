@@ -71,6 +71,9 @@ fun AltaPantalla(
     var intento by rememberSaveable { mutableStateOf(false) }
 
     val validacion = validarAnio(if (sinAnio) "" else anioTexto, dia, mes, hoy)
+    // Al final del contenido, debajo de Guardar. Sin imePadding propio: el
+    // Scaffold ya resta el teclado y la columna scrollea hasta el anuncio.
+    val nativo = nativoEn(LugarNativo.ALTA)
 
     Column(
         modifier
@@ -139,6 +142,10 @@ fun AltaPantalla(
                 },
                 modifier = Modifier.weight(1f),
             )
+        }
+        nativo?.let {
+            Spacer(Modifier.height(16.dp))
+            TarjetaNativo(it)
         }
         Spacer(Modifier.height(96.dp))
     }
