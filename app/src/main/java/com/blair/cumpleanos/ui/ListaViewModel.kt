@@ -159,13 +159,13 @@ class ListaViewModel(
     private fun <T> kotlinx.coroutines.flow.Flow<List<T>>.estado(): StateFlow<List<T>> =
         stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun mesAnterior() {
-        _mes.value = if (_porAnio.value) _mes.value.minusYears(1) else _mes.value.minusMonths(1)
-    }
+    fun irA(ym: YearMonth) { _mes.value = ym }
 
-    fun mesSiguiente() {
-        _mes.value = if (_porAnio.value) _mes.value.plusYears(1) else _mes.value.plusMonths(1)
-    }
+    /** Años que ofrece el selector: del primer saludo registrado al actual. */
+    val aniosHistorial: StateFlow<IntRange> = db.cumpleDao().primerSaludo().map { primero ->
+        val actual = anioDe(hoy())
+        (primero?.let { anioDe(it) } ?: actual).coerceAtMost(actual)..actual
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), anioDe(hoy()).let { it..it })
 
     fun alternarPorAnio(anual: Boolean) { _porAnio.value = anual }
 

@@ -160,6 +160,7 @@ class MainActivity : ComponentActivity() {
         val historial by vm.historial.collectAsStateWithLifecycle()
         val mes by vm.mes.collectAsStateWithLifecycle()
         val porAnio by vm.porAnio.collectAsStateWithLifecycle()
+        val aniosHistorial by vm.aniosHistorial.collectAsStateWithLifecycle()
         val busqueda by vm.busqueda.collectAsStateWithLifecycle()
         val personaAbierta by vm.personaAbierta.collectAsStateWithLifecycle()
         val colision by vm.colision.collectAsStateWithLifecycle()
@@ -213,8 +214,8 @@ class MainActivity : ComponentActivity() {
                     onBorrarHistorial = { vm.borrarHistorial() },
                     onBorrarHistorialDe = { id -> vm.borrarHistorialDe(id) },
                     conHistorial = conHistorial,
-                    onMesAnterior = vm::mesAnterior,
-                    onMesSiguiente = vm::mesSiguiente,
+                    aniosHistorial = aniosHistorial,
+                    onElegirPeriodo = vm::irA,
                     onAlternarPorAnio = vm::alternarPorAnio,
                     busqueda = busqueda,
                     onBuscar = vm::buscar,

@@ -147,6 +147,10 @@
     <string name="contador_mes">This month</string>
     <string name="hist_buscar">Search by name</string>
     <string name="hist_buscando_todo">Searching the whole history</string>
+    <string name="hist_elegir_periodo">Choose the period</string>
+    <string name="hist_elegir_mes_anio">Choose month and year</string>
+    <string name="hist_elegir_anio">Choose the year</string>
+    <string name="accion_ver">SHOW</string>
     <string name="hist_sin_resultados">No results for «%1$s»</string>
     <string name="desc_limpiar_busqueda">Clear search</string>
 </resources>

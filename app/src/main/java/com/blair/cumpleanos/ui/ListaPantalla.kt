@@ -1,6 +1,14 @@
 package com.blair.cumpleanos.ui
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.key
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,8 +32,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -108,11 +114,12 @@ private sealed interface Item {
     data class Grupo(val h: FilaLista.Encabezado) : Item { override val clave = "g" + h.anio }
     data class Cumple(val f: FilaCumple) : Item { override val clave = "c" + f.c.id }
     data class Personas(val lista: List<Persona>) : Item { override val clave = "personas" }
-    data object ControlesHistorial : Item { override val clave = "ctrlHist" }
+    data object SelectorHistorial : Item { override val clave = "ctrlHist" }
     data object Buscador : Item { override val clave = "buscador" }
     data object BuscandoTodo : Item { override val clave = "buscandoTodo" }
     data object SinResultados : Item { override val clave = "sinResultados" }
-    data class Saludo(val c: CumpleUi) : Item { override val clave = "s" + c.id }
+    /** Todo el historial en UNA fila de la LazyColumn: adentro scrollea por su cuenta. */
+    data class Historial(val lista: List<CumpleUi>) : Item { override val clave = "histLista" }
     data class Vacio(val texto: Int, override val clave: String) : Item
     data object Pie : Item { override val clave = "pie" }
 }
@@ -142,8 +149,8 @@ fun ListaPantalla(
     onBorrarHistorial: () -> Unit,
     onBorrarHistorialDe: (Long) -> Unit,
     conHistorial: List<PersonaConHistorial>,
-    onMesAnterior: () -> Unit,
-    onMesSiguiente: () -> Unit,
+    aniosHistorial: IntRange,
+    onElegirPeriodo: (YearMonth) -> Unit,
     onAlternarPorAnio: (Boolean) -> Unit,
     busqueda: String,
     onBuscar: (String) -> Unit,
@@ -182,10 +189,10 @@ fun ListaPantalla(
         add(Item.Seccion(R.string.sec_historial, CianNeon, "secHistorial"))
         add(Item.Buscador)
         // Buscando, el rango no aplica: sus controles mentirian.
-        if (buscando) add(Item.BuscandoTodo) else add(Item.ControlesHistorial)
+        if (buscando) add(Item.BuscandoTodo) else add(Item.SelectorHistorial)
         // "No hay saludos" y "nadie se llama asi" son cosas distintas.
         if (historial.isEmpty()) add(if (buscando) Item.SinResultados else Item.Vacio(R.string.hist_vacio, "vacioHist"))
-        historial.forEach { add(Item.Saludo(it)) }
+        else add(Item.Historial(historial))
         add(Item.Pie)
     }
 
@@ -224,8 +231,8 @@ fun ListaPantalla(
                 )
                 is Item.Cumple -> TarjetaCumple(item.f, loc, onSaludar, onEditarPersona, anim)
                 is Item.Personas -> TarjetaPersonas(item.lista, loc, onEditarPersona, { aBorrar = it }, anim)
-                Item.ControlesHistorial -> ControlesHistorial(mes, porAnio, loc, onMesAnterior, onMesSiguiente, onAlternarPorAnio, anim)
-                is Item.Saludo -> TarjetaSaludo(item.c, loc, { onEditarRegalo(item.c) }, anim)
+                Item.SelectorHistorial -> SelectorPeriodo(mes, porAnio, aniosHistorial, onElegirPeriodo, onAlternarPorAnio, anim)
+                is Item.Historial -> ListaHistorial(item.lista, loc, onEditarRegalo, anim)
                 is Item.Vacio -> Text(
                     stringResource(item.texto),
                     color = TextoSecundario,
@@ -624,36 +631,62 @@ private fun TarjetaPersonas(
     }
 }
 
+/** Tope del recuadro del historial: mas alto que esto scrollea por dentro. */
+private val ALTO_MAX_HISTORIAL = 460.dp
+private val ANCHO_BARRA = 6.dp
+
+/**
+ * Saludos del periodo con scroll propio, dentro de un recuadro que marca la zona
+ * desplazable: el patron de Por Vencer, ya probado en produccion.
+ *
+ * Column con verticalScroll y tope de alto, NO una LazyColumn: una lazy adentro de
+ * otra con alto infinito tira IllegalStateException. Al llegar a un extremo el
+ * gesto sigue en la pantalla (nested scroll). La barra solo existe si el
+ * contenido supera el tope.
+ */
 @Composable
-private fun ControlesHistorial(
-    mes: YearMonth,
-    porAnio: Boolean,
-    loc: Locale,
-    onMesAnterior: () -> Unit,
-    onMesSiguiente: () -> Unit,
-    onAlternarPorAnio: (Boolean) -> Unit,
-    modifier: Modifier,
-) {
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onMesAnterior) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.desc_anterior), tint = CianNeon)
+private fun ListaHistorial(historial: List<CumpleUi>, loc: Locale, onTocar: (CumpleUi) -> Unit, modifier: Modifier) {
+    val scroll = rememberScrollState()
+    val forma = RoundedCornerShape(24.dp)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .clip(forma)
+            .background(CianNeon.copy(alpha = 0.05f))
+            .border(1.dp, CianNeon.copy(alpha = 0.45f), forma)
+            .padding(start = 10.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = ALTO_MAX_HISTORIAL)
+                .barraDesplazamiento(scroll, CianNeon.copy(alpha = 0.18f), CianNeon.copy(alpha = 0.85f))
+                .verticalScroll(scroll)
+                // Hueco para la barra y el halo de las tarjetas: no quedan debajo.
+                .padding(start = 4.dp, top = 4.dp, bottom = 4.dp, end = ANCHO_BARRA + 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            historial.forEach { c ->
+                key(c.id) { TarjetaSaludo(c, loc, { onTocar(c) }, Modifier) }
+            }
         }
-        Text(
-            if (porAnio) mes.year.toString() else nombreMes(mes, loc),
-            color = BlancoEscena,
-            style = MaterialTheme.typography.titleMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.weight(1f),
-        )
-        IconButton(onClick = onMesSiguiente) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.desc_siguiente), tint = CianNeon)
-        }
-        Spacer(Modifier.width(6.dp))
-        ChipEleccion(stringResource(R.string.hist_mes), !porAnio, { onAlternarPorAnio(false) })
-        Spacer(Modifier.width(6.dp))
-        ChipEleccion(stringResource(R.string.hist_anio), porAnio, { onAlternarPorAnio(true) })
     }
 }
+
+/** Riel y barra a la derecha del viewport. Antes de verticalScroll: mide el viewport. */
+private fun Modifier.barraDesplazamiento(scroll: ScrollState, riel: Color, color: Color): Modifier =
+    drawWithContent {
+        drawContent()
+        val max = scroll.maxValue
+        if (max <= 0 || max == Int.MAX_VALUE) return@drawWithContent
+        val alto = size.height
+        val ancho = ANCHO_BARRA.toPx()
+        val x = size.width - ancho
+        drawRoundRect(riel, topLeft = Offset(x, 0f), size = Size(ancho, alto), cornerRadius = CornerRadius(ancho / 2))
+        val altoBarra = (alto * alto / (alto + max)).coerceAtLeast(32.dp.toPx())
+        val y = (alto - altoBarra) * scroll.value / max
+        drawRoundRect(color, topLeft = Offset(x, y), size = Size(ancho, altoBarra), cornerRadius = CornerRadius(ancho / 2))
+    }
 
 /**
  * Sin imePadding: el Scaffold ya suma WindowInsets.ime y con los dos el campo

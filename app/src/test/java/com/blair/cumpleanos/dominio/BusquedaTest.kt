@@ -5,12 +5,13 @@ import org.junit.Test
 
 class BusquedaTest {
 
-    private val nombres = listOf("Any", "Ány", "Ana", "Ñandú")
+    private val nombres = listOf("Any", "Ány", "Ana", "Aníbal", "Ñandú")
     private val filas = nombres.map { ConClave(it, normalizar(it)) }
 
     private fun buscar(texto: String) = filtrarPorNombre(filas, normalizar(texto))
 
-    @Test fun `a trae Any, Any con tilde y Ana`() = assertEquals(listOf("Any", "Ány", "Ana"), buscar("a"))
+    @Test fun `a trae Any, Any con tilde, Ana y Anibal`() = assertEquals(listOf("Any", "Ány", "Ana", "Aníbal"), buscar("a"))
+    @Test fun `an trae los cuatro que empiezan con an`() = assertEquals(listOf("Any", "Ány", "Ana", "Aníbal"), buscar("an"))
     @Test fun `any con tilde ignora la tilde`() = assertEquals(listOf("Any", "Ány"), buscar("ány"))
     @Test fun `mayusculas no importan`() = assertEquals(listOf("Any", "Ány"), buscar("ANY"))
     @Test fun `nandu encuentra la enie`() = assertEquals(listOf("Ñandú"), buscar("nandu"))

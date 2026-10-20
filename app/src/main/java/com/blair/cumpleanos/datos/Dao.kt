@@ -107,6 +107,10 @@ interface CumpleDao {
     )
     fun saludadosTodos(): Flow<List<CumpleUi>>
 
+    /** Primer dia con un saludo registrado: desde donde arranca el selector de años. */
+    @Query("SELECT MIN(saludadoDia) FROM cumple WHERE saludadoDia IS NOT NULL")
+    fun primerSaludo(): Flow<Int?>
+
     /** Ficha de una persona: todo, saludado o no. */
     @Query("SELECT * FROM cumple WHERE personaId = :personaId ORDER BY fechaDia DESC")
     fun historialDe(personaId: Long): Flow<List<Cumple>>
