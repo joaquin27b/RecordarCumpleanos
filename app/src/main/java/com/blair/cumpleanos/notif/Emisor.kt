@@ -20,6 +20,12 @@ private const val ID_RESUMEN = Int.MAX_VALUE
  */
 private const val BASE_ID_FESTEJO = 1 shl 30
 
+/** La pregunta de asistencia, en un tercer espacio: no pisa ni al cumple ni al festejo. */
+private const val BASE_ID_ASISTENCIA = 3 shl 29
+
+/** cumpleId de la pregunta de asistencia que abre la app al tocar la notificacion. */
+const val EXTRA_ASISTENCIA = "asistencia"
+
 object Emisor {
 
     /**
@@ -49,16 +55,28 @@ object Emisor {
         emitir(ctx, BASE_ID_FESTEJO + personaId.toInt(), CANAL_CUMPLE, nombre, texto, NotificationCompat.PRIORITY_HIGH)
     }
 
+    /** "¿Fuiste al festejo de Patry?". Tocarla abre la app con la tarjeta arriba. */
+    fun asistencia(ctx: Context, personaId: Long, cumpleId: Long, nombre: String) {
+        emitir(
+            ctx, BASE_ID_ASISTENCIA + personaId.toInt(), CANAL_CUMPLE, nombre,
+            ctx.getString(R.string.asistencia_pregunta, nombre), NotificationCompat.PRIORITY_HIGH,
+        ) { putExtra(EXTRA_ASISTENCIA, cumpleId) }
+    }
+
     fun resumen(ctx: Context, titulo: String, cuerpo: String) {
         emitir(ctx, ID_RESUMEN, CANAL_RESUMEN, titulo, cuerpo, NotificationCompat.PRIORITY_LOW)
     }
 
-    private fun emitir(ctx: Context, id: Int, canal: String, titulo: String, texto: String, prioridad: Int) {
+    private fun emitir(
+        ctx: Context, id: Int, canal: String, titulo: String, texto: String, prioridad: Int,
+        extras: Intent.() -> Unit = {},
+    ) {
         val abrir = PendingIntent.getActivity(
             ctx,
             id,
             Intent(ctx, MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .apply(extras),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val n = NotificationCompat.Builder(ctx, canal)

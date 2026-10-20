@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -110,6 +112,7 @@ private sealed interface Item {
     val clave: String
 
     data object Cabecera : Item { override val clave = "cabecera" }
+    data class Asistencia(val c: CumpleUi) : Item { override val clave = "asist" + c.id }
     data class Seccion(val texto: Int, val color: Color, override val clave: String) : Item
     data class Grupo(val h: FilaLista.Encabezado) : Item { override val clave = "g" + h.anio }
     data class Cumple(val f: FilaCumple) : Item { override val clave = "c" + f.c.id }
@@ -154,6 +157,12 @@ fun ListaPantalla(
     onAlternarPorAnio: (Boolean) -> Unit,
     busqueda: String,
     onBuscar: (String) -> Unit,
+    /** Pregunta de asistencia pendiente, UNA sola; null = ninguna. */
+    asistencia: CumpleUi?,
+    onResponderAsistencia: (cumpleId: Long, asistio: Boolean) -> Unit,
+    onAsistenciaMostrada: (CumpleUi) -> Unit,
+    /** Cambia al tocar la notificacion de asistencia: la lista vuelve arriba, a la tarjeta. */
+    irArriba: Any?,
     modifier: Modifier = Modifier,
 ) {
     val loc = locale()
@@ -170,6 +179,7 @@ fun ListaPantalla(
 
     val items = buildList {
         add(Item.Cabecera)
+        asistencia?.let { add(Item.Asistencia(it)) }
         if (pasados.isNotEmpty()) {
             add(Item.Seccion(R.string.sec_pasados, RojoCta, "secPasados"))
             pasados.forEach { add(Item.Cumple(it)) }
@@ -199,8 +209,14 @@ fun ListaPantalla(
     val vistos = remember { mutableSetOf<Any>() }
     val inicio = remember { System.currentTimeMillis() }
 
+    val estadoLista = rememberLazyListState()
+    LaunchedEffect(irArriba) { if (irArriba != null) estadoLista.animateScrollToItem(0) }
+    // Mostrarla es preguntar: se anota el dia, y la notificacion ya no sale.
+    asistencia?.let { c -> LaunchedEffect(c.id) { onAsistenciaMostrada(c) } }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
+        state = estadoLista,
         contentPadding = PaddingValues(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -208,6 +224,7 @@ fun ListaPantalla(
             val anim = Modifier.entrada(item.clave, i, vistos, inicio)
             when (item) {
                 Item.Cabecera -> Cabecera(cumplesDelMes, loc, anim)
+                is Item.Asistencia -> TarjetaAsistencia(item.c, loc, onResponderAsistencia, anim)
                 is Item.Seccion -> EncabezadoSeccion(
                     stringResource(item.texto) + if (item.clave == "secPersonas") " (${personas.size})" else "",
                     item.color,
@@ -753,6 +770,17 @@ private fun TarjetaSaludo(c: CumpleUi, loc: Locale, onEditarRegalo: () -> Unit, 
                         ?: stringResource(R.string.regalo_sin_anotar),
                     apagada = c.regaloReal == null,
                 )
+                // Junto al regalo y solo si hubo festejo aparte (o ya se respondio).
+                if (c.fechaFestejoDia != null || c.asistio != null) {
+                    LineaFestejo(
+                        when (c.asistio) {
+                            true -> stringResource(R.string.asistencia_fuiste)
+                            false -> stringResource(R.string.asistencia_no_fuiste)
+                            null -> stringResource(R.string.asistencia_sin_responder)
+                        },
+                        apagada = c.asistio == null,
+                    )
+                }
             }
             if (c.anulado) {
                 Box(Modifier.padding(start = 8.dp)) {
@@ -763,21 +791,69 @@ private fun TarjetaSaludo(c: CumpleUi, loc: Locale, onEditarRegalo: () -> Unit, 
     }
 }
 
+/**
+ * "¿Fuiste al festejo de Patry?" con Si y No. Arriba de todo, una sola: la del
+ * festejo mas reciente o la que pidio la notificacion.
+ */
 @Composable
-private fun LineaFestejo(texto: String) {
+private fun TarjetaAsistencia(
+    c: CumpleUi,
+    loc: Locale,
+    onResponder: (cumpleId: Long, asistio: Boolean) -> Unit,
+    modifier: Modifier,
+) {
+    Tarjeta(modifier, neon = HazFucsia, intenso = true) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(painterResource(R.drawable.ic_festejo), contentDescription = null, tint = HazFucsia, modifier = Modifier.size(26.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                stringResource(R.string.asistencia_pregunta, c.nombre),
+                color = BlancoEscena,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        c.fechaFestejoDia?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.festejo_linea, fechaConDia(it, loc)),
+                color = TextoSecundario,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = 36.dp),
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            BotonPrincipal(
+                stringResource(R.string.asistencia_si),
+                onClick = { onResponder(c.id, true) },
+                modifier = Modifier.weight(1f),
+            )
+            BotonPrincipal(
+                stringResource(R.string.asistencia_no),
+                onClick = { onResponder(c.id, false) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LineaFestejo(texto: String, apagada: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             painterResource(R.drawable.ic_festejo),
             contentDescription = null,
-            tint = HazFucsia,
+            tint = if (apagada) TextoSecundario else HazFucsia,
             modifier = Modifier.size(15.dp),
         )
         Spacer(Modifier.width(6.dp))
         Text(
             texto,
-            color = BlancoEscena,
+            color = if (apagada) TextoSecundario else BlancoEscena,
             style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = if (apagada) FontWeight.Normal else FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

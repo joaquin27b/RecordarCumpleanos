@@ -14,6 +14,8 @@ import com.blair.cumpleanos.dominio.avisaFestejo
 import com.blair.cumpleanos.dominio.avisaResumen
 import com.blair.cumpleanos.dominio.edad
 import com.blair.cumpleanos.dominio.mesDe
+import com.blair.cumpleanos.dominio.notificaAsistencia
+import com.blair.cumpleanos.dominio.ventanaAsistencia
 import com.blair.cumpleanos.ui.nombreMesSolo
 import java.time.Duration
 import java.time.LocalDate
@@ -58,6 +60,15 @@ class TickWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
                 app.prefs.edit().putInt(claveFestejo(f.cumpleId), hoy).apply()
             }
         }
+
+        // Asistencia: UNA por tick, la del festejo mas reciente; las demas esperan
+        // su turno. Avisada o vista en la app, no se vuelve a notificar.
+        ventanaAsistencia(hoy).let { v -> dao.asistenciasPendientesAhora(v.first, v.last) }
+            .firstOrNull { notificaAsistencia(it.fechaFestejoDia, it.asistio, it.asistenciaPreguntadaDia, hoy) }
+            ?.let { c ->
+                Emisor.asistencia(applicationContext, c.personaId, c.id, c.nombre)
+                dao.marcarAsistenciaPreguntada(c.id, hoy)
+            }
 
         val ym = anioDe(hoy) * 100 + mesDe(hoy)
         val ultimo = app.prefs.getInt(CLAVE_RESUMEN, 0).takeIf { it != 0 }

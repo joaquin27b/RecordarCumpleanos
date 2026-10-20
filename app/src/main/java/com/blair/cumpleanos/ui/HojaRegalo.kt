@@ -168,8 +168,12 @@ fun HojaRegalo(
     textoBoton: String,
     onGuardar: (String?) -> Unit,
     onCerrar: () -> Unit,
+    /** Desde el historial, si hubo festejo: Si/No editable. null = no se muestra. */
+    asistioInicial: Boolean? = null,
+    onAsistencia: ((Boolean?) -> Unit)? = null,
 ) {
     var texto by rememberSaveable { mutableStateOf(inicial ?: "") }
+    var asistio by rememberSaveable { mutableStateOf(asistioInicial) }
     ModalBottomSheet(
         onDismissRequest = onCerrar,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -200,7 +204,30 @@ fun HojaRegalo(
                     Text(cuerpo, color = TextoSecundario, style = MaterialTheme.typography.bodyMedium)
                 }
                 CampoRegalo(texto, { texto = it }, etiqueta)
-                BotonPrincipal(textoBoton, onClick = { onGuardar(texto) }, modifier = Modifier.fillMaxWidth())
+                if (onAsistencia != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(painterResource(R.drawable.ic_festejo), contentDescription = null, tint = HazFucsia, modifier = Modifier.size(26.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            stringResource(R.string.asistencia_etiqueta),
+                            color = BlancoEscena,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                        )
+                        // Tocar el elegido lo suelta: vuelve a "sin responder".
+                        ChipEleccion(stringResource(R.string.asistencia_chip_si), asistio == true, { asistio = if (asistio == true) null else true })
+                        Spacer(Modifier.width(6.dp))
+                        ChipEleccion(stringResource(R.string.asistencia_chip_no), asistio == false, { asistio = if (asistio == false) null else false })
+                    }
+                }
+                BotonPrincipal(
+                    textoBoton,
+                    onClick = {
+                        if (onAsistencia != null && asistio != asistioInicial) onAsistencia(asistio)
+                        onGuardar(texto)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 TextButton(onClick = onCerrar, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                     Text(stringResource(R.string.accion_cancelar), color = CianNeon)
                 }

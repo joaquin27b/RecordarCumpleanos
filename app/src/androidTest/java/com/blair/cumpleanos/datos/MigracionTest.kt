@@ -45,7 +45,7 @@ private fun Cursor.intONull(col: String): Int? =
     getColumnIndexOrThrow(col).let { if (isNull(it)) null else getInt(it) }
 
 /**
- * v1 -> v2 sobre el DDL REAL de 1.json, el que tienen los testers: verificado
+ * v1 -> v2 -> v3 sobre el DDL REAL de 1.json, el que tienen los testers: verificado
  * contra el identity hash del AAB publicado (a302d200...).
  */
 @RunWith(AndroidJUnit4::class)
@@ -168,6 +168,124 @@ class MigracionTest {
             assertEquals(esperadas, leidas)
         }
         db.close()
+    }
+
+    /** Personas y cumples tal como se sembraron, y las columnas [enNull] en NULL en todas las filas. */
+    private fun verificarFilas(db: SupportSQLiteDatabase, enNull: List<String>) {
+        db.query("SELECT * FROM persona ORDER BY id").use { c ->
+            val leidas = buildList {
+                while (c.moveToNext()) {
+                    add(
+                        FilaPersona(
+                            c.getLong(c.getColumnIndexOrThrow("id")),
+                            c.getString(c.getColumnIndexOrThrow("nombre")),
+                            c.getInt(c.getColumnIndexOrThrow("diaHabitual")),
+                            c.intONull("anioNacimiento"),
+                            c.getInt(c.getColumnIndexOrThrow("ancla")),
+                            c.intONull("ultimoSaludoDia"),
+                            c.getInt(c.getColumnIndexOrThrow("activo")),
+                            c.getColumnIndexOrThrow("preavisos").let { if (c.isNull(it)) null else c.getString(it) },
+                        )
+                    )
+                }
+            }
+            assertEquals(personasEsperadas, leidas)
+        }
+        db.query("SELECT * FROM cumple ORDER BY id").use { c ->
+            val leidas = buildList {
+                while (c.moveToNext()) {
+                    add(
+                        FilaCumple(
+                            c.getLong(c.getColumnIndexOrThrow("id")),
+                            c.getLong(c.getColumnIndexOrThrow("personaId")),
+                            c.getInt(c.getColumnIndexOrThrow("fechaDia")),
+                            c.intONull("avisoUltimoDia"),
+                            c.getInt(c.getColumnIndexOrThrow("saludado")),
+                            c.intONull("saludadoDia"),
+                            c.getInt(c.getColumnIndexOrThrow("anulado")),
+                        )
+                    )
+                    enNull.forEach { col -> assertTrue("$col no quedo en NULL", c.isNull(c.getColumnIndexOrThrow(col))) }
+                }
+            }
+            assertEquals(esperadas, leidas)
+        }
+    }
+
+    /** v1 (la publicada) directo a v3: encadena MIGRACION_1_2 y MIGRACION_2_3. */
+    @Test fun de1a3ConservaTodoYLasColumnasNuevasVienenEnNull() {
+        helper.createDatabase(NOMBRE, 1).use { sembrarV1(it) }
+        // validateDroppedTables = true: compara contra 3.json, identity hash incluido.
+        val db = helper.runMigrationsAndValidate(NOMBRE, 3, true, MIGRACION_1_2, MIGRACION_2_3)
+        verificarFilas(
+            db,
+            listOf("regaloPlan", "regaloReal", "fechaFestejoDia", "asistio", "asistenciaPreguntadaDia"),
+        )
+        db.close()
+    }
+
+    /** v2 (1.1.1, la de los testers) a v3: los regalos y el festejo cargados sobreviven. */
+    @Test fun de2a3ConservaRegalosYFestejoYAsistenciaEnNull() {
+        helper.createDatabase(NOMBRE, 2).use {
+            sembrarV1(it)
+            it.execSQL(
+                "UPDATE cumple SET regaloPlan = 'Un libro de Cortázar', regaloReal = 'Un vinilo', " +
+                    "fechaFestejoDia = ${d(2026, 3, 21)} WHERE id = 10"
+            )
+            it.execSQL("UPDATE cumple SET regaloPlan = 'Café de especialidad' WHERE id = 11")
+        }
+        val db = helper.runMigrationsAndValidate(NOMBRE, 3, true, MIGRACION_2_3)
+        verificarFilas(db, listOf("asistio", "asistenciaPreguntadaDia"))
+        db.query("SELECT id, regaloPlan, regaloReal, fechaFestejoDia FROM cumple ORDER BY id").use { c ->
+            val filas = buildList {
+                while (c.moveToNext()) {
+                    add(listOf(c.getLong(0), c.getString(1), c.getString(2), c.intONull("fechaFestejoDia")))
+                }
+            }
+            assertEquals(
+                listOf(
+                    listOf(10L, "Un libro de Cortázar", "Un vinilo", d(2026, 3, 21)),
+                    listOf(11L, "Café de especialidad", null, null),
+                    listOf(12L, null, null, null),
+                ),
+                filas,
+            )
+        }
+        db.close()
+    }
+
+    /** 2->3 a medio camino (una de las dos columnas ya esta) no revienta. */
+    @Test fun de2a3EsIdempotente() {
+        helper.createDatabase(NOMBRE, 2).use {
+            sembrarV1(it)
+            it.execSQL("ALTER TABLE `cumple` ADD COLUMN `asistio` INTEGER")
+        }
+        helper.runMigrationsAndValidate(NOMBRE, 3, true, MIGRACION_2_3).close()
+    }
+
+    /** Room de verdad, como CumpleanosApp: abre la v2 migrada y la lee con los DAO. */
+    @Test fun roomAbreLaV2MigradaYLeeAsistenciaEnNull() {
+        helper.createDatabase(NOMBRE, 2).use {
+            sembrarV1(it)
+            it.execSQL("UPDATE cumple SET fechaFestejoDia = ${d(2026, 3, 21)} WHERE id = 10")
+        }
+        val room = Room.databaseBuilder(ctx, BaseDatos::class.java, NOMBRE)
+            .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
+            .addMigrations(MIGRACION_1_2, MIGRACION_2_3)
+            .build()
+        try {
+            val abiertos = runBlocking { room.cumpleDao().abiertosAhora() }
+            assertEquals(listOf(11L, 12L), abiertos.map { it.id })
+            abiertos.forEach {
+                assertNull(it.asistio)
+                assertNull(it.asistenciaPreguntadaDia)
+            }
+            val c10 = runBlocking { room.cumpleDao().porId(10) }!!
+            assertEquals(d(2026, 3, 21), c10.fechaFestejoDia)
+            assertNull(c10.asistio)
+        } finally {
+            room.close()
+        }
     }
 
     /** Una base que ya tiene una de las columnas (migracion a medio camino) no revienta. */

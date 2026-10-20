@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.blair.cumpleanos.datos.BaseDatos
 import com.blair.cumpleanos.datos.MIGRACION_1_2
+import com.blair.cumpleanos.datos.MIGRACION_2_3
 import com.blair.cumpleanos.notif.Canales
 import com.blair.cumpleanos.notif.TickWorker
 import com.blair.cumpleanos.repo.Repositorio
@@ -34,7 +35,7 @@ class CumpleanosApp : Application() {
             // arranque con TRUNCATE hace checkpoint del -wal de la v1.
             .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
             // Sin fallback destructivo: una actualizacion NUNCA borra datos.
-            .addMigrations(MIGRACION_1_2)
+            .addMigrations(MIGRACION_1_2, MIGRACION_2_3)
             .build()
     }
 

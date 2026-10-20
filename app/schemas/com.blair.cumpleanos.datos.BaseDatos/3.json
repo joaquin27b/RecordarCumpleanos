@@ -1,0 +1,193 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "7286402536548d0dbaabb655540a1322",
+    "entities": [
+      {
+        "tableName": "persona",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nombre` TEXT NOT NULL, `diaHabitual` INTEGER NOT NULL, `anioNacimiento` INTEGER, `ancla` INTEGER NOT NULL, `ultimoSaludoDia` INTEGER, `activo` INTEGER NOT NULL, `preavisos` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "diaHabitual",
+            "columnName": "diaHabitual",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "anioNacimiento",
+            "columnName": "anioNacimiento",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "ancla",
+            "columnName": "ancla",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ultimoSaludoDia",
+            "columnName": "ultimoSaludoDia",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "activo",
+            "columnName": "activo",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "preavisos",
+            "columnName": "preavisos",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_persona_activo",
+            "unique": false,
+            "columnNames": [
+              "activo"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_persona_activo` ON `${TABLE_NAME}` (`activo`)"
+          }
+        ]
+      },
+      {
+        "tableName": "cumple",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `personaId` INTEGER NOT NULL, `fechaDia` INTEGER NOT NULL, `avisoUltimoDia` INTEGER, `saludado` INTEGER NOT NULL, `saludadoDia` INTEGER, `anulado` INTEGER NOT NULL, `regaloPlan` TEXT, `regaloReal` TEXT, `fechaFestejoDia` INTEGER, `asistio` INTEGER, `asistenciaPreguntadaDia` INTEGER, FOREIGN KEY(`personaId`) REFERENCES `persona`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "personaId",
+            "columnName": "personaId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaDia",
+            "columnName": "fechaDia",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avisoUltimoDia",
+            "columnName": "avisoUltimoDia",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "saludado",
+            "columnName": "saludado",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "saludadoDia",
+            "columnName": "saludadoDia",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "anulado",
+            "columnName": "anulado",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "regaloPlan",
+            "columnName": "regaloPlan",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "regaloReal",
+            "columnName": "regaloReal",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fechaFestejoDia",
+            "columnName": "fechaFestejoDia",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "asistio",
+            "columnName": "asistio",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "asistenciaPreguntadaDia",
+            "columnName": "asistenciaPreguntadaDia",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cumple_personaId_fechaDia",
+            "unique": true,
+            "columnNames": [
+              "personaId",
+              "fechaDia"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_cumple_personaId_fechaDia` ON `${TABLE_NAME}` (`personaId`, `fechaDia`)"
+          },
+          {
+            "name": "index_cumple_saludado_saludadoDia",
+            "unique": false,
+            "columnNames": [
+              "saludado",
+              "saludadoDia"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cumple_saludado_saludadoDia` ON `${TABLE_NAME}` (`saludado`, `saludadoDia`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "persona",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "personaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7286402536548d0dbaabb655540a1322')"
+    ]
+  }
+}

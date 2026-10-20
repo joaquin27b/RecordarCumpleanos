@@ -153,4 +153,13 @@
     <string name="accion_ver">SHOW</string>
     <string name="hist_sin_resultados">No results for «%1$s»</string>
     <string name="desc_limpiar_busqueda">Clear search</string>
+    <string name="asistencia_pregunta">Did you go to %1$s\'s party?</string>
+    <string name="asistencia_si">YES, I WENT</string>
+    <string name="asistencia_no">I DIDN\'T</string>
+    <string name="asistencia_fuiste">You went to the party</string>
+    <string name="asistencia_no_fuiste">You didn\'t go</string>
+    <string name="asistencia_sin_responder">Party: no answer yet</string>
+    <string name="asistencia_etiqueta">Did you go to the party?</string>
+    <string name="asistencia_chip_si">Yes</string>
+    <string name="asistencia_chip_no">No</string>
 </resources>

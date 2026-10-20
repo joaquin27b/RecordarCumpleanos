@@ -108,6 +108,11 @@ class Repositorio(private val db: BaseDatos) {
     }
 
     /** Marcado por error: vuelve a pendiente y queda tachado en el historial. */
+    /** Si/No de la tarjeta o de la hoja del historial. null = vuelve a sin responder. */
+    suspend fun anotarAsistencia(cumpleId: Long, asistio: Boolean?) = cumples.anotarAsistencia(cumpleId, asistio)
+
+    suspend fun marcarAsistenciaPreguntada(cumpleId: Long, hoy: Int) = cumples.marcarAsistenciaPreguntada(cumpleId, hoy)
+
     suspend fun anularSaludo(cumpleId: Long) = cumples.anularSaludo(cumpleId)
 
     suspend fun resaludar(cumpleId: Long, dia: Int) = cumples.resaludar(cumpleId, dia)

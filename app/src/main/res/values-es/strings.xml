@@ -151,4 +151,13 @@
     <string name="accion_ver">VER</string>
     <string name="hist_sin_resultados">Sin resultados para «%1$s»</string>
     <string name="desc_limpiar_busqueda">Borrar búsqueda</string>
+    <string name="asistencia_pregunta">¿Fuiste al festejo de %1$s?</string>
+    <string name="asistencia_si">SÍ, FUI</string>
+    <string name="asistencia_no">NO FUI</string>
+    <string name="asistencia_fuiste">Fuiste al festejo</string>
+    <string name="asistencia_no_fuiste">No fuiste</string>
+    <string name="asistencia_sin_responder">Festejo sin responder</string>
+    <string name="asistencia_etiqueta">¿Fuiste al festejo?</string>
+    <string name="asistencia_chip_si">Sí</string>
+    <string name="asistencia_chip_no">No</string>
 </resources>

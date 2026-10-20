@@ -59,4 +59,9 @@ data class Cumple(
     /** epochDay del festejo de ESTA ocurrencia, si no es el mismo dia (cumple el
      *  martes, festeja el sabado). null = sin festejo aparte: no se avisa nada. */
     val fechaFestejoDia: Int? = null,
+    /** Si fue al festejo de ESTA ocurrencia: un año va y al otro no. null = sin responder. */
+    val asistio: Boolean? = null,
+    /** epochDay en que se mostro la pregunta de asistencia. Distingue "no pregunte
+     *  todavia" de "pregunte y no contesto": sin esto se repregunta a diario. */
+    val asistenciaPreguntadaDia: Int? = null,
 )

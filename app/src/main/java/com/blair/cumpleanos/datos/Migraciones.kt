@@ -29,3 +29,19 @@ val MIGRACION_1_2: Migration = object : Migration(1, 2) {
         if ("fechaFestejoDia" !in existentes) db.execSQL("ALTER TABLE `cumple` ADD COLUMN `fechaFestejoDia` INTEGER")
     }
 }
+
+/**
+ * v2 -> v3: asistencia al festejo, por ocurrencia. Primer cambio de schema con
+ * la v2 (1.1.1) en manos de testers con datos reales.
+ *
+ * Mismas reglas que MIGRACION_1_2: solo ADD COLUMN, nullable y sin DEFAULT, asi
+ * las filas existentes quedan en NULL ("sin responder", "no pregunte"). Chequeo
+ * de PRAGMA antes de cada ALTER: reintentarla no tira "duplicate column".
+ */
+val MIGRACION_2_3: Migration = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        val existentes = columnas(db, "cumple")
+        if ("asistio" !in existentes) db.execSQL("ALTER TABLE `cumple` ADD COLUMN `asistio` INTEGER")
+        if ("asistenciaPreguntadaDia" !in existentes) db.execSQL("ALTER TABLE `cumple` ADD COLUMN `asistenciaPreguntadaDia` INTEGER")
+    }
+}

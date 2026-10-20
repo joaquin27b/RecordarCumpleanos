@@ -12,6 +12,8 @@ import com.blair.cumpleanos.dominio.ConClave
 import com.blair.cumpleanos.dominio.Estado
 import com.blair.cumpleanos.dominio.anioDe
 import com.blair.cumpleanos.dominio.edad
+import com.blair.cumpleanos.dominio.elegirAsistencia
+import com.blair.cumpleanos.dominio.ventanaAsistencia
 import com.blair.cumpleanos.dominio.estado
 import com.blair.cumpleanos.dominio.filtrarPorNombre
 import com.blair.cumpleanos.dominio.mandaFestejo
@@ -136,6 +138,25 @@ class ListaViewModel(
                 if (vacia) delRango
                 else combine(todosConClave, consulta) { filas, q -> filtrarPorNombre(filas, q) }
             }.estado()
+
+    /** La que pidio la notificacion de asistencia tocada; null = la mas reciente. */
+    private val asistenciaPedida = MutableStateFlow<Long?>(null)
+
+    fun pedirAsistencia(cumpleId: Long?) { asistenciaPedida.value = cumpleId }
+
+    /** UNA sola pregunta de asistencia por vez; las demas esperan su turno. */
+    val asistencia: StateFlow<CumpleUi?> =
+        ventanaAsistencia(hoy()).let { v -> db.cumpleDao().asistenciasPendientes(v.first, v.last) }
+            .combine(asistenciaPedida) { l, pedida -> elegirAsistencia(l, CumpleUi::id, pedida) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun responderAsistencia(cumpleId: Long, asistio: Boolean?) = lanzar { repo.anotarAsistencia(cumpleId, asistio) }
+
+    /** Mostrar la tarjeta cuenta como preguntar: la notificacion ya no sale. */
+    fun asistenciaMostrada(c: CumpleUi) {
+        val hoy = hoy()
+        if (c.asistenciaPreguntadaDia != hoy) lanzar { repo.marcarAsistenciaPreguntada(c.id, hoy) }
+    }
 
     fun buscar(texto: String) { _busqueda.value = texto.take(60) }
 

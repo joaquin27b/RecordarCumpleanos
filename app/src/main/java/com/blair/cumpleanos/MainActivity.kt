@@ -1,6 +1,7 @@
 package com.blair.cumpleanos
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.blair.cumpleanos.notif.EXTRA_ASISTENCIA
 import com.blair.cumpleanos.notif.TickWorker
 import com.blair.cumpleanos.ui.AltaPantalla
 import com.blair.cumpleanos.ui.BannerAdaptativo
@@ -60,6 +63,22 @@ import com.blair.cumpleanos.ui.escena.Intensidad
 import com.blair.cumpleanos.ui.theme.RecordarCumpleanosTheme
 
 class MainActivity : ComponentActivity() {
+
+    /** cumpleId de la notificacion de asistencia tocada, con el momento: tocarla dos veces vuelve a subir. */
+    private var asistenciaPedida by mutableStateOf<Pair<Long, Long>?>(null)
+
+    /** Se consume y se borra: al rotar, el intent viejo no la vuelve a pedir. */
+    private fun leerAsistencia(i: Intent?) {
+        val id = i?.getLongExtra(EXTRA_ASISTENCIA, -1L) ?: return
+        if (id <= 0) return
+        i.removeExtra(EXTRA_ASISTENCIA)
+        asistenciaPedida = id to System.nanoTime()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        leerAsistencia(intent)
+    }
 
     private val permiso = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -93,6 +112,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         pedirPermisoNotificaciones()
+        leerAsistencia(intent)
         // Solo debug: cmd jobscheduler run -f no saltea el initialDelay de WorkManager.
         // adb shell am start -n com.blair.cumpleanos/.MainActivity --ez tick true
         if (BuildConfig.DEBUG && intent?.getBooleanExtra("tick", false) == true) {
@@ -167,6 +187,9 @@ class MainActivity : ComponentActivity() {
         val conHistorial by vm.conHistorial.collectAsStateWithLifecycle()
         val pendientesDePersona by vm.pendientesDePersona.collectAsStateWithLifecycle()
         val cumplesDelMes by vm.cumplesDelMes.collectAsStateWithLifecycle()
+        val asistencia by vm.asistencia.collectAsStateWithLifecycle()
+        val pedida = asistenciaPedida
+        LaunchedEffect(pedida) { pedida?.let { vm.pedirAsistencia(it.first) } }
         // Al tocar YA SALUDÉ se abre primero la hoja del regalo; el saludo se
         // guarda recien al confirmar.
         var aSaludar by remember { mutableStateOf<FilaCumple?>(null) }
@@ -219,6 +242,10 @@ class MainActivity : ComponentActivity() {
                     onAlternarPorAnio = vm::alternarPorAnio,
                     busqueda = busqueda,
                     onBuscar = vm::buscar,
+                    asistencia = asistencia,
+                    onResponderAsistencia = vm::responderAsistencia,
+                    onAsistenciaMostrada = vm::asistenciaMostrada,
+                    irArriba = pedida,
                     modifier = Modifier.padding(innerPadding),
                 )
             }
@@ -267,6 +294,10 @@ class MainActivity : ComponentActivity() {
                     regaloHistorial = null
                 },
                 onCerrar = { regaloHistorial = null },
+                asistioInicial = c.asistio,
+                onAsistencia = if (c.fechaFestejoDia != null || c.asistio != null) {
+                    { vm.responderAsistencia(c.id, it) }
+                } else null,
             )
         }
     }
