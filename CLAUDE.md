@@ -69,7 +69,12 @@ por encima del MAYOR de esta tabla y agregar la fila nueva.
 | 2 | 1.1.x | v2 | — | subido |
 | 3 | 1.1.1 | v2 | 06a57ec | publicado |
 | 4 | 1.2.0 | v2 | b3c2859 (solo buscador) | **usado en Play**: no reutilizar |
-| 5 | 1.2.0 | v3 | `v1.2.0-vc5` | AAB generado 2026-10-20 |
+| 5 | 1.2.0 | v3 | `v1.2.0-vc5` | en closed testing; solicitud de acceso a Producción enviada 2026-10-20 14:08 (respuesta por mail, ≤7 días) |
+
+**Próxima tanda: versionCode 6.** Mientras la solicitud de Producción está en
+revisión **no se sube nada al track de closed testing** (un release nuevo puede
+reiniciar o complicar la evaluación): lo que se termine queda commiteado y
+pusheado a git, sin AAB subido.
 
 ## Modelo de datos
 
