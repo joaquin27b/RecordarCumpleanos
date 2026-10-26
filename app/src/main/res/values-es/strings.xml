@@ -186,7 +186,7 @@
     <string name="hist_motivo">Motivo: %1$s</string>
     <string name="saludo_fecha_etiqueta_omitido">No saludado el %1$s</string>
     <string name="no_fui_titulo">¿Por qué no fuiste al festejo de %1$s?</string>
-    <string name="no_fui_cuerpo">Anotalo para acordarte. Es opcional.</string>
+    <string name="no_fui_cuerpo">Anotalo para no olvidarte en el futuro. Es opcional.</string>
     <string name="no_fui_motivo">¿Por qué no fuiste? (opcional)</string>
     <string name="asistencia_no_fuiste_motivo">No fuiste: %1$s</string>
 

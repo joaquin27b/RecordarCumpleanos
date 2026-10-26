@@ -190,7 +190,7 @@
     <string name="hist_motivo">Reason: %1$s</string>
     <string name="saludo_fecha_etiqueta_omitido">Not greeted on %1$s</string>
     <string name="no_fui_titulo">Why didn\'t you go to %1$s\'s party?</string>
-    <string name="no_fui_cuerpo">Write it down to remember. Optional.</string>
+    <string name="no_fui_cuerpo">Write it down so you won\'t forget it in the future. Optional.</string>
     <string name="no_fui_motivo">Why didn\'t you go? (optional)</string>
     <string name="asistencia_no_fuiste_motivo">You didn\'t go: %1$s</string>
 
