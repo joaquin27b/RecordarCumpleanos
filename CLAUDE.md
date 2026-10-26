@@ -51,12 +51,15 @@ que abrir la base que el usuario ya tiene y conservarla entera:
 - Journal en TRUNCATE, no WAL: el backup copia `cumpleanos.db` sin el `-wal`.
   Las reglas de backup (`res/xml/`) incluyen la base y `ajustes.xml`.
 
-Estado actual: `@Database version = 3` (editar la fecha del saludo y eliminar un
-saludo no tocaron el esquema: `saludadoDia` no está en el índice único), schemas `1.json`, `2.json` y `3.json`.
-Migraciones registradas: `.addMigrations(MIGRACION_1_2, MIGRACION_2_3)`.
+Estado actual: `@Database version = 4`, schemas `1.json` a `4.json`.
+Migraciones registradas: `.addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4)`.
 - `MIGRACION_1_2` (v1.0.0 → 1.1.x): `regaloPlan`, `regaloReal`, `fechaFestejoDia`.
 - `MIGRACION_2_3` (1.1.1 → 1.2.0): `asistio`, `asistenciaPreguntadaDia`. Primer cambio
   de schema con testers sobre la v2.
+- `MIGRACION_3_4` (1.2.x → 1.3.0): `omitidoDia`, `motivoOmitido`, `motivoNoAsistio`.
+  Upgrade real probado en el teléfono 2026-10-26 (25/25 filas idénticas). Editar la
+  fecha del saludo y eliminar un saludo no tocan el esquema: `saludadoDia` no está
+  en el índice único.
 
 ## Releases (versionCodes usados en Play)
 
@@ -95,7 +98,14 @@ el historial), `regaloPlan?`, `regaloReal?` (se confirma al saludar),
 `fechaFestejoDia?` (null = sin festejo aparte), `asistio?` (fue al festejo de ESTA
 ocurrencia; null = sin responder), `asistenciaPreguntadaDia?` (epochDay en que se
 mostró la pregunta; distingue "no pregunté" de "pregunté y no contestó"). Mover el
-festejo borra la respuesta.
+festejo borra la respuesta. `omitidoDia?` ("No saludé": se cierra como un saludo,
+`saludado = 1` y `saludadoDia` = ese día; sale de contadores y avisos y queda en el
+historial como "No saludado"; no cambia `ultimoSaludoDia`), `motivoOmitido?`,
+`motivoNoAsistio?` (la excusa del festejo).
+
+**Contadores ESTE MES / ESTE AÑO** (cabecera, siempre los dos, amarillos):
+`pendientesEntre` cuenta ocurrencias del rango sin saludar, o saludadas con un
+festejo que todavía no pasó. Un "No saludé" no cuenta.
 
 Fechas como epochDay `Int` en todo el dominio.
 
@@ -117,6 +127,10 @@ Fechas como epochDay `Int` en todo el dominio.
   El "ya avisé" del festejo vive en **prefs** (`festejo_aviso_<cumpleId>`), no en la
   tabla.
 - Resumen del mes: el día 1 (o el primer tick del mes), silencio si no hay cumpleaños.
+- Día siguiente al cumple sin marcar (`preguntaSaludo`): "¿Saludaste a X ayer?" una
+  vez, con botones YA SALUDÉ / NO SALUDÉ (abren la hoja del regalo o la de la excusa).
+  La de asistencia lleva FUI / NO FUI (NO FUI abre la excusa). Los botones abren
+  `MainActivity` con `EXTRA_ACCION` y `EXTRA_CUMPLE`.
 - Asistencia al festejo (`dominio/Asistencia.kt`): se pregunta desde el día SIGUIENTE
   al festejo y hasta 30 días después, si `asistio` es null. Notificación "¿Fuiste al
   festejo de X?" una sola vez por ocurrencia (solo si `asistenciaPreguntadaDia` es
