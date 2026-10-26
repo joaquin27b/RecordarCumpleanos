@@ -18,6 +18,7 @@ import com.blair.cumpleanos.dominio.estado
 import com.blair.cumpleanos.dominio.filtrarPorNombre
 import com.blair.cumpleanos.dominio.mandaFestejo
 import com.blair.cumpleanos.dominio.normalizar
+import com.blair.cumpleanos.repo.FechaSaludo
 import com.blair.cumpleanos.repo.Movida
 import com.blair.cumpleanos.repo.Repositorio
 import java.time.LocalDate
@@ -203,10 +204,14 @@ class ListaViewModel(
 
     fun resaludar(cumpleId: Long) = lanzar { repo.resaludar(cumpleId, hoy()) }
 
-    fun editarFechaSaludo(cumpleId: Long, dia: Int) =
-        lanzar { repo.editarFechaSaludo(cumpleId, dia) }
+    /** [alTerminar] recibe el resultado: con FUTURA o CHOQUE la hoja queda abierta con el aviso. */
+    fun editarFechaSaludo(cumpleId: Long, dia: Int, alTerminar: (FechaSaludo) -> Unit) {
+        viewModelScope.launch { alTerminar(repo.editarFechaSaludo(cumpleId, dia, hoy())) }
+    }
 
     fun borrarFila(cumpleId: Long) = lanzar { repo.borrarFila(cumpleId) }
+
+    fun eliminarSaludo(cumpleId: Long) = lanzar { repo.eliminarSaludo(cumpleId, hoy()) }
 
     /** Colision contra el indice unico: la UI muestra error_colision, no crashea. */
     private val _colision = MutableStateFlow(false)

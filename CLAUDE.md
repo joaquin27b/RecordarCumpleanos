@@ -51,7 +51,8 @@ que abrir la base que el usuario ya tiene y conservarla entera:
 - Journal en TRUNCATE, no WAL: el backup copia `cumpleanos.db` sin el `-wal`.
   Las reglas de backup (`res/xml/`) incluyen la base y `ajustes.xml`.
 
-Estado actual: `@Database version = 3`, schemas `1.json`, `2.json` y `3.json`.
+Estado actual: `@Database version = 3` (editar la fecha del saludo y eliminar un
+saludo no tocaron el esquema: `saludadoDia` no está en el índice único), schemas `1.json`, `2.json` y `3.json`.
 Migraciones registradas: `.addMigrations(MIGRACION_1_2, MIGRACION_2_3)`.
 - `MIGRACION_1_2` (v1.0.0 → 1.1.x): `regaloPlan`, `regaloReal`, `fechaFestejoDia`.
 - `MIGRACION_2_3` (1.1.1 → 1.2.0): `asistio`, `asistenciaPreguntadaDia`. Primer cambio
@@ -72,8 +73,9 @@ por encima del MAYOR de esta tabla y agregar la fila nueva.
 | 5 | 1.2.0 | v3 | `v1.2.0-vc5` | en closed testing; solicitud de acceso a Producción enviada 2026-10-20 14:08 (respuesta por mail, ≤7 días) |
 | 6 | 1.2.1 | v3 | ver git log | AAB generado 2026-10-20, sin subir (nativos mini en alta y entre secciones; buscador de personas; línea bajo los títulos; imePadding del alta; halo del FAB fuera del banner) |
 | 7 | 1.2.2 | v3 | ver git log | AAB generado 2026-10-21 (nativos: media topeado y apaisado, compacto de alto fijo, regla de densidad, no se recargan al girar) |
+| 8 | 1.3.0 | v3 | ver git log | AAB generado 2026-10-26 (nombre de marca en todos los idiomas; Velita con globo sin cumpleaños; editar fecha y eliminar un saludo; permisos directos; aviso a las 00:05; nativos mini en ventanas, mediano al final con su unidad, CTA apagado) |
 
-**Próxima tanda: versionCode 8.** Mientras la solicitud de Producción está en
+**Próxima tanda: versionCode 9.** Mientras la solicitud de Producción está en
 revisión **no se sube nada al track de closed testing** (un release nuevo puede
 reiniciar o complicar la evaluación): lo que se termine queda commiteado y
 pusheado a git, sin AAB subido.
@@ -99,8 +101,14 @@ Fechas como epochDay `Int` en todo el dominio.
 
 ## Notificaciones
 
-- `TickWorker`: WorkManager periódico de 24 h, primera corrida a las 9:00 (±1 h). No
-  AlarmManager: sobrevive al reboot y no pide `USE_EXACT_ALARM`.
+- `notif/Madrugada.kt`: `setAndAllowWhileIdle` a las 00:05 (sin permiso de alarma
+  exacta, corre en reposo) que publica los avisos del día: ninguna app se entera del
+  desbloqueo, así que el aviso ya tiene que estar al desbloquear. Antes de las 8
+  (`HORA_SONORA`) sale mudo. Se reprograma al disparar, al arrancar, en
+  `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED` y cambios de hora. Debug:
+  `--ez madrugada true`.
+- `TickWorker`: WorkManager periódico de 24 h a las 9:00 (±1 h), de respaldo. Los dos
+  corren `correrTick` y cada aviso se marca una vez por día: no duplican.
 - Cumpleaños: D-0 siempre (no configurable) y los preavisos de la persona (default 7 y
   1 días antes). Una vez por día por ocurrencia (`avisoUltimoDia`). Un cumple pasado no
   reavisa a diario.
@@ -133,11 +141,14 @@ borde cian al enfocar). Textos en `values/` (inglés) y `values-es/`.
 App ID en el manifiesto por `manifestPlaceholders["adAppId"]` (release
 `ca-app-pub-6760097434219921~8061744806`). No se duplica.
 
-| buildType | `AD_UNIT_BANNER` | `AD_UNIT_NATIVE` |
-|-----------|------------------|------------------|
-| debug     | prueba `…3940256099942544/9214589741` | prueba `…3940256099942544/2247696110` |
-| release   | `ca-app-pub-6760097434219921/3170801198` | `ca-app-pub-6760097434219921/8011490915` |
-| medicion  | prueba, y `PEDIR_ANUNCIO=false`: no pide nada | prueba, no pide |
+| buildType | `AD_UNIT_BANNER` | `AD_UNIT_NATIVE` | `AD_UNIT_NATIVE_FINAL` |
+|-----------|------------------|------------------|------------------------|
+| debug     | prueba `…3940256099942544/9214589741` | prueba `…3940256099942544/2247696110` | prueba (la misma) |
+| release   | `ca-app-pub-6760097434219921/3170801198` | `ca-app-pub-6760097434219921/8011490915` | `ca-app-pub-6760097434219921/6727036276` |
+| medicion  | prueba, y `PEDIR_ANUNCIO=false`: no pide nada | prueba, no pide | prueba, no pide |
+
+`AD_UNIT_NATIVE_FINAL` es solo para `LISTA_FINAL` (el mediano del final): unidad
+propia para medir ese lugar aparte en el panel.
 
 - **Banner**: adaptativo en el `bottomBar` del Scaffold, una instancia por sesión. No
   se recrea al navegar ni al abrir hojas. **Nunca** `loadAd()` por acción del usuario:
@@ -145,32 +156,51 @@ App ID en el manifiesto por `manifestPlaceholders["adAppId"]` (release
   el panel de AdMob, no en el código.
 - **Nativos** (`ui/AnuncioNativo.kt`, `CoordinadorNativos` en `NativosViewModel`:
   sobrevive a la rotación, girar no pide otro):
-  - **Dos tamaños.** COMPACTO (lista y hojas): fila de alto fijo 64dp con etiqueta,
-    ícono, titular (2 líneas con "…"), anunciante (1 línea) y CTA, sin media.
-    COMPLETO (solo AltaPantalla): con media topeado a 180dp (mínimo AdMob 120dp),
-    cuerpo a 2 líneas. Se pide `NATIVE_MEDIA_ASPECT_RATIO_LANDSCAPE`.
-  - **Por qué**: en debug el nativo de prueba siempre es apaisado y corto. En
-    release el inventario real trae media vertical y titulares largos: sin tope, una
-    creatividad 9:16 medía ~590dp. Se reproduce en `TamanoNativoTest`, no en el teléfono.
-  - **Alta y hojas**: uno solo, el de mayor prioridad (1 alta, 2 hoja), pedido UNA vez
-    al abrir, `destroy()` al cerrar. El del alta va siempre, aun sin datos.
-  - **Lista — regla de densidad** (`ui/DensidadNativos.kt`, `ubicarNativos`): se
-    cuentan filas de datos (cumpleaños y personas; ni encabezados, ni anuncios, ni
-    historial). 0 filas: ninguno. 1–5: uno al final de todo. 6+: uno tras la primera
-    sección con datos y los siguientes solo con 6 filas desde el anterior (nunca dos
-    en pantalla; dos secciones cortas comparten uno). Secciones: pasados, este año,
-    próximo año, personas, historial.
-  - Los turnos LISTA_1..4 se anotan siempre (con datos) y cada uno se pide la primera
-    vez que su ancla (la fila que le sigue) queda en pantalla al detenerse el scroll
-    (`LugaresEnPantalla`). El turno conserva su anuncio aunque se corra de lugar:
-    agregar una persona no pide otro.
-  - Con una hoja o el alta encima, los de la lista quedan invisibles en su lugar
-    (`alpha 0`, sin correr nada) y vuelven los mismos al cerrar.
+  - **Tamaños.** MINI (hojas y ventana de borrar historial): una línea de 44dp,
+    etiqueta, título y CTA, sin ícono. COMPACTO (lista): 64dp con ícono, título a 2
+    líneas y anunciante. MEDIANO (final de la lista): con media topeado a 120dp.
+    COMPLETO (alta): media topeado a 180dp. Se pide `NATIVE_MEDIA_ASPECT_RATIO_LANDSCAPE`.
+  - **Aire de 4dp entre los assets y el borde de la NativeAdView** (`AIRE_ASSETS_DP`).
+    Pegados al borde, el redondeo dp→px los dejaba un píxel afuera según el ancho y
+    el validador marcaba "Advertiser assets outside native ad view" (en la lista sí,
+    en el alta no). Mismo arreglo que en Ya La Tomé.
+  - **CTA apagado**, violeta parecido al fondo de la tarjeta (`FONDO_CTA` #3B2A86,
+    texto #CFC8EE): pedido del usuario, no compite con los botones de la app.
+  - Tarjeta de fondo **sólido**: translúcida, el confeti se veía a través del anuncio.
+  - **Alta, hojas y ventana**: uno solo, el de mayor prioridad (1 alta, 2 hoja, 3
+    ventana), pedido al abrir, `destroy()` al cerrar. El del alta va siempre.
+    Confirmaciones y calendarios NO llevan: quedaría pegado a Borrar/Cancelar y
+    encima de otro anuncio.
+  - **Lista — regla de densidad** (`ui/DensidadNativos.kt`, `ubicarNativos`):
+    secciones pasados, este año, próximo año, personas, historial (este cuenta hasta
+    `FILAS_MAX_HISTORIAL`) y después el final. Sin cumpleaños: ninguno (aunque haya
+    historial). 1–5 filas: uno solo, tras PRÓXIMOS CUMPLEAÑOS. 6+: uno tras la
+    primera sección con datos y los siguientes con 6 filas desde el anterior; si el
+    final queda pegado al anterior, gana el final. Nunca dos en pantalla.
+  - Los turnos LISTA_1..4 y LISTA_FINAL se anotan con datos y cada uno se pide la
+    primera vez que su ancla queda en pantalla al detenerse el scroll.
+  - Con una hoja, el alta o la ventana encima, los de la lista quedan invisibles en
+    su lugar (`alpha 0`) y vuelven los mismos al cerrar.
   - Sin animación de entrada.
-  Siempre en su propia tarjeta (nunca dentro de una tarjeta de la app), con etiqueta
-  "Anuncio" y CTA gris neutro (nunca cian, degradé, dorado ni rojo). Van ENTRE
-  secciones; nada dentro de la tarjeta de PERSONAS: es "ad mimicking app content".
+  Siempre en su propia tarjeta, con etiqueta "Anuncio". Van ENTRE secciones; nada
+  dentro de la tarjeta de PERSONAS: es "ad mimicking app content".
   Sin anuncio no se dibuja la tarjeta: sin hueco reservado.
+
+## Sin cumpleaños
+
+Misma pantalla con sus secciones vacías. Velita (`ui/MascotaInvita.kt`) arriba del
+botón, señalándolo, con halo dorado, llama que crece y globo "¡AGREGÁ ESE
+CUMPLEAÑOS…!" (como Ya La Tomé y Por Vencer). La animación corre con
+`repeatOnLifecycle(STARTED)`: en segundo plano no dibuja nada (medido: 0 cuadros).
+
+## Permisos
+
+`MainActivity`: después del splash, directo con las ventanas del sistema (sin cartel
+previo): batería (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`) y después notificaciones.
+Una vez por día mientras falte algo (`permisos_pedidos_dia` en prefs); con todo
+concedido no pregunta nunca. Si Android bloqueó la ventana de notificaciones, abre
+el interruptor de la app. **Ojo Play**: el permiso de batería es restringido y
+puede pedir declaración.
 
 ## Errores que ya cometimos
 

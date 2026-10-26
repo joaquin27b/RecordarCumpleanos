@@ -10,6 +10,15 @@ import com.blair.cumpleanos.dominio.proxima
 import com.blair.cumpleanos.dominio.proximaOcurrencia
 
 /** Resultado de mover una fecha: FIJO no puede pisar el indice unico. */
+/** Resultado de corregir el dia en que se saludo. */
+enum class FechaSaludo {
+    OK,
+    /** El saludo ya ocurrio: no puede ser despues de hoy. */
+    FUTURA,
+    /** La persona ya tiene otro saludo ese dia. */
+    CHOQUE,
+}
+
 sealed interface Movida {
     data object Ok : Movida
     /** Ya existe otra ocurrencia de esa persona en esa fecha. */
@@ -117,11 +126,44 @@ class Repositorio(private val db: BaseDatos) {
 
     suspend fun resaludar(cumpleId: Long, dia: Int) = cumples.resaludar(cumpleId, dia)
 
-    /** "Lo saludé ayer, no hoy". */
-    suspend fun editarFechaSaludo(cumpleId: Long, dia: Int) = cumples.editarFechaSaludo(cumpleId, dia)
+    /**
+     * "Lo saludé ayer, no hoy". Solo cambia saludadoDia: el indice unico es
+     * (personaId, fechaDia) y fechaDia no se toca, asi que no hay ABORT posible y
+     * el proximo cumpleaños (que sale de fechaDia y del ancla) no se mueve. Se
+     * valida ANTES de escribir y se devuelve el motivo: nada de excepciones.
+     */
+    suspend fun editarFechaSaludo(cumpleId: Long, dia: Int, hoy: Int): FechaSaludo =
+        db.withTransaction {
+            if (dia > hoy) return@withTransaction FechaSaludo.FUTURA
+            val c = cumples.porId(cumpleId) ?: return@withTransaction FechaSaludo.OK
+            if (c.saludadoDia == dia) return@withTransaction FechaSaludo.OK
+            if (cumples.otroSaludoEnDia(c.personaId, dia, cumpleId) != null) return@withTransaction FechaSaludo.CHOQUE
+            cumples.editarFechaSaludo(cumpleId, dia)
+            personas.porId(c.personaId)?.let { p ->
+                personas.actualizar(p.copy(ultimoSaludoDia = cumples.ultimoSaludoDe(p.id)))
+            }
+            FechaSaludo.OK
+        }
 
     /** Unico borrado de una fila: error explicito del usuario. */
     suspend fun borrarFila(cumpleId: Long) = cumples.borrarFila(cumpleId)
+
+    /**
+     * Elimina UN saludo del historial, elegido por el usuario. Se borra la fila de
+     * esa ocurrencia y no se "dessaluda": un cumpleaños de hace meses no vuelve a
+     * aparecer como no saludado. Despues se recalcula el ultimo saludo y se
+     * asegura que la persona tenga su proximo cumpleaños.
+     */
+    suspend fun eliminarSaludo(cumpleId: Long, hoy: Int) {
+        db.withTransaction {
+            val c = cumples.porId(cumpleId) ?: return@withTransaction
+            cumples.borrarFila(cumpleId)
+            personas.porId(c.personaId)?.let { p ->
+                personas.actualizar(p.copy(ultimoSaludoDia = cumples.ultimoSaludoDe(p.id)))
+            }
+            asegurarCobertura(c.personaId, hoy)
+        }
+    }
 
     /**
      * Editar la persona. Si cambia la fecha, mueve tambien la ocurrencia

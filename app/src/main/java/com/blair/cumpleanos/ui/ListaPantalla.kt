@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -64,7 +63,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -84,7 +82,6 @@ import com.blair.cumpleanos.dominio.ConClave
 import com.blair.cumpleanos.dominio.filtrarPorNombre
 import com.blair.cumpleanos.ui.escena.TituloCromado
 import com.blair.cumpleanos.ui.escena.Velita
-import com.blair.cumpleanos.ui.escena.VelitaEnEscenario
 import com.blair.cumpleanos.ui.theme.BlancoEscena
 import com.blair.cumpleanos.ui.theme.CianNeon
 import com.blair.cumpleanos.ui.theme.Dorado
@@ -99,6 +96,9 @@ import java.util.Locale
 
 /** Reserva bajo la ultima fila para el FAB destacado y su glow. */
 private val ALTO_PIE = 200.dp
+
+/** Sin cumpleaños abajo flotan tambien Velita y su globo: lo ultimo tiene que poder pasar por encima. */
+private val ALTO_PIE_CON_MASCOTA = 420.dp
 
 /** Hasta cuantos dias antes la pildora va dorada. Mas lejos, violeta neutra. */
 private const val DIAS_DESTACADO = 30
@@ -196,22 +196,30 @@ fun ListaPantalla(
     val consultaPersona = normalizar(buscaPersona)
     val personasVistas = if (consultaPersona.isEmpty()) personas else filtrarPorNombre(clavesPersonas, consultaPersona)
 
-    if (esVacio(pasados, proximos, personas) && conHistorial.isEmpty()) {
-        EstadoVacio(modifier)
-        return
-    }
+    // Sin cumpleaños la pantalla es la misma, con sus secciones vacias, y Velita
+    // invita a cargar uno al lado del boton (MainActivity). Nativos de la lista,
+    // ninguno: recien vuelven al cargar un cumpleaños. El banner va siempre.
+    val sinCumples = esVacio(pasados, proximos, personas)
 
     // Secciones para la regla de densidad: pasados, este año, proximo año,
-    // personas e historial. El historial no suma filas: es una caja de alto fijo.
+    // personas e historial. Despues del historial va el grande del final. El
+    // historial cuenta hasta FILAS_MAX_HISTORIAL: es una caja de alto fijo.
     val inicioProximoAnio = proximos.indexOfFirst { it is FilaLista.Encabezado && !it.esteAnio }
         .let { if (it < 0) proximos.size else it }
     val filasEsteAnio = proximos.subList(0, inicioProximoAnio).count { it is FilaLista.Dato }
     val filasProximoAnio = proximos.count { it is FilaLista.Dato } - filasEsteAnio
-    val turnos = LugarNativo.entries.filter { it.enLista }
-    val trasSeccion = ubicarNativos(
-        listOf(pasados.size, filasEsteAnio, filasProximoAnio, personas.size, 0),
-        maximo = turnos.size,
-    ).zip(turnos).toMap()
+    val secciones = listOf(
+        pasados.size, filasEsteAnio, filasProximoAnio, personas.size, minOf(historial.size, FILAS_MAX_HISTORIAL),
+    )
+    val trasSeccion: Map<Int, LugarNativo> = if (sinCumples) emptyMap() else {
+        // Con pocas filas, el unico va tras PROXIMOS CUMPLEAÑOS (seccion 2).
+        val ubicados = ubicarNativos(secciones, unicoTras = 2)
+        val compactos = LugarNativo.entries.filter { it.enLista && it != LugarNativo.LISTA_FINAL }.iterator()
+        ubicados.mapNotNull { i ->
+            val lugar = if (i == secciones.lastIndex) LugarNativo.LISTA_FINAL else compactos.takeIf { it.hasNext() }?.next()
+            lugar?.let { i to it }
+        }.toMap()
+    }
 
     val crudos = buildList {
         fun lugar(seccion: Int) = trasSeccion[seccion]?.let { add(Item.Lugar(it)) }
@@ -233,8 +241,10 @@ fun ListaPantalla(
         }
         if (inicioProximoAnio == proximos.size) lugar(1)
         lugar(2)
-        if (personas.isNotEmpty()) {
-            add(Item.Seccion(R.string.sec_personas, Dorado, "secPersonas"))
+        add(Item.Seccion(R.string.sec_personas, Dorado, "secPersonas"))
+        if (personas.isEmpty()) {
+            add(Item.Vacio(R.string.per_vacio, "vacioPersonas"))
+        } else {
             add(Item.BuscadorPersonas)
             add(if (personasVistas.isEmpty()) Item.PersonasSinResultados(buscaPersona.trim()) else Item.Personas(personasVistas))
         }
@@ -352,7 +362,7 @@ fun ListaPantalla(
                 // Al final del scroll el FAB no tapa la ultima fila: 60 de boton,
                 // 30 de halo, 32 de separacion del banner y aire: el nativo del
                 // final sube entero por encima del boton.
-                Item.Pie -> Spacer(Modifier.height(ALTO_PIE))
+                Item.Pie -> Spacer(Modifier.height(if (sinCumples) ALTO_PIE_CON_MASCOTA else ALTO_PIE))
             }
         }
     }
@@ -374,6 +384,9 @@ fun ListaPantalla(
     }
 
     if (borrarHist) {
+        // Uno mini, al pie de la ventana y lejos de Cancelar. Se pide al abrirla y
+        // se destruye al cerrarla; mientras esta abierta los de la lista no se ven.
+        val nativoDialogo = nativoEn(LugarNativo.DIALOGO)
         AlertDialog(
             onDismissRequest = { borrarHist = false },
             title = { Text(stringResource(R.string.accion_borrar_historial)) },
@@ -411,6 +424,10 @@ fun ListaPantalla(
                                 )
                             }
                         }
+                    }
+                    nativoDialogo?.let {
+                        Spacer(Modifier.height(16.dp))
+                        TarjetaNativo(it, LugarNativo.DIALOGO.tamano)
                     }
                 }
             },
@@ -560,38 +577,6 @@ private fun ContadorMes(cantidad: Int, loc: Locale, modifier: Modifier) {
     }
 }
 
-@Composable
-private fun EstadoVacio(modifier: Modifier) {
-    BoxWithConstraints(modifier.fillMaxSize()) {
-        val angosta = maxWidth < 360.dp
-        VelitaEnEscenario()
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .offset(y = maxHeight * 0.06f)
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            TituloCromado(
-                texto = stringResource(R.string.marca),
-                tamano = if (angosta) 36.sp else 42.sp,
-            )
-            Spacer(Modifier.height(14.dp))
-            Text(
-                stringResource(R.string.lista_vacia),
-                color = BlancoEscena,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                stringResource(R.string.vacio_cuerpo),
-                color = TextoSecundario,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}
 
 @Composable
 private fun TarjetaCumple(

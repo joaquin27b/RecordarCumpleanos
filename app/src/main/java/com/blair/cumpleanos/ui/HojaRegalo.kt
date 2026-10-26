@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.IconButton
@@ -61,6 +63,7 @@ import com.blair.cumpleanos.ui.theme.BlancoEscena
 import com.blair.cumpleanos.ui.theme.CianNeon
 import com.blair.cumpleanos.ui.theme.Dorado
 import com.blair.cumpleanos.ui.theme.NocheMedia
+import com.blair.cumpleanos.ui.theme.RojoCta
 import com.blair.cumpleanos.ui.theme.TextoSecundario
 
 private const val DIA_MS = 86_400_000L
@@ -138,6 +141,76 @@ fun CampoFestejo(fecha: Int?, onCambio: (Int?) -> Unit, sugerida: Int) {
     }
 }
 
+/**
+ * Dia en que se saludo, corregible desde el historial. El calendario abre en la
+ * fecha guardada y no deja elegir dias futuros: el saludo ya ocurrio.
+ *
+ * @param error aviso debajo del campo (fecha futura, otro saludo ese dia); null = ninguno.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CampoFechaSaludo(fecha: Int, onCambio: (Int) -> Unit, error: String?) {
+    val loc = LocalConfiguration.current.locales[0]
+    var abierto by rememberSaveable { mutableStateOf(false) }
+    val forma = RoundedCornerShape(18.dp)
+    val color = if (error != null) RojoCta else EscenarioBorde.copy(alpha = 0.55f)
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.DateRange, contentDescription = null, tint = CianNeon, modifier = Modifier.size(26.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                stringResource(R.string.saludo_fecha_etiqueta, fechaConDia(fecha, loc)),
+                color = BlancoEscena,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 56.dp)
+                    .clip(forma)
+                    .background(Escenario1.copy(alpha = 0.28f))
+                    .border(1.dp, color, forma)
+                    .clickable(role = Role.Button, onClickLabel = stringResource(R.string.saludo_fecha_cambiar)) { abierto = true }
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+            )
+        }
+        if (error != null) {
+            Text(
+                error,
+                color = RojoCta,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 36.dp, top = 4.dp),
+            )
+        }
+    }
+    if (abierto) {
+        val hoyMs = LocalDate.now().toEpochDay() * DIA_MS
+        val estado = rememberDatePickerState(
+            initialSelectedDateMillis = minOf(fecha.toLong() * DIA_MS, hoyMs),
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= hoyMs
+                override fun isSelectableYear(year: Int) = year <= LocalDate.now().year
+            },
+        )
+        DatePickerDialog(
+            onDismissRequest = { abierto = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    // El picker trabaja en UTC a medianoche: dividir da el epochDay exacto.
+                    estado.selectedDateMillis?.let { onCambio((it / DIA_MS).toInt()) }
+                    abierto = false
+                }) { Text(stringResource(R.string.accion_guardar), color = CianNeon, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { abierto = false }) { Text(stringResource(R.string.accion_cancelar), color = CianNeon) }
+            },
+        ) {
+            DatePicker(
+                state = estado,
+                title = { Text(stringResource(R.string.saludo_fecha_titulo), Modifier.padding(start = 24.dp, top = 16.dp)) },
+            )
+        }
+    }
+}
+
 /** Campo del regalo con su icono. Vacio se guarda como NULL: "sin regalo anotado". */
 @Composable
 fun CampoRegalo(valor: String, onCambio: (String) -> Unit, etiqueta: String) {
@@ -168,14 +241,23 @@ fun HojaRegalo(
     etiqueta: String,
     inicial: String?,
     textoBoton: String,
-    onGuardar: (String?) -> Unit,
+    /** El regalo y, si se muestra el campo, el dia del saludo elegido (null si no). */
+    onGuardar: (regalo: String?, fechaSaludo: Int?) -> Unit,
     onCerrar: () -> Unit,
     /** Desde el historial, si hubo festejo: Si/No editable. null = no se muestra. */
     asistioInicial: Boolean? = null,
     onAsistencia: ((Boolean?) -> Unit)? = null,
+    /** Desde el historial: el dia del saludo, corregible. null = no se muestra. */
+    fechaSaludoInicial: Int? = null,
+    errorFecha: String? = null,
+    onFechaCambiada: () -> Unit = {},
+    /** Desde el historial: eliminar este saludo, con confirmacion. null = no se muestra. */
+    onEliminar: (() -> Unit)? = null,
 ) {
+    var confirmarEliminar by rememberSaveable { mutableStateOf(false) }
     var texto by rememberSaveable { mutableStateOf(inicial ?: "") }
     var asistio by rememberSaveable { mutableStateOf(asistioInicial) }
+    var fechaSaludo by rememberSaveable { mutableStateOf(fechaSaludoInicial) }
     val nativo = nativoEn(LugarNativo.HOJA)
     ModalBottomSheet(
         onDismissRequest = onCerrar,
@@ -208,6 +290,9 @@ fun HojaRegalo(
                 if (cuerpo != null) {
                     Text(cuerpo, color = TextoSecundario, style = MaterialTheme.typography.bodyMedium)
                 }
+                fechaSaludo?.let { f ->
+                    CampoFechaSaludo(f, { fechaSaludo = it; onFechaCambiada() }, errorFecha)
+                }
                 CampoRegalo(texto, { texto = it }, etiqueta)
                 if (onAsistencia != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -229,12 +314,17 @@ fun HojaRegalo(
                     textoBoton,
                     onClick = {
                         if (onAsistencia != null && asistio != asistioInicial) onAsistencia(asistio)
-                        onGuardar(texto)
+                        onGuardar(texto, fechaSaludo)
                     },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 TextButton(onClick = onCerrar, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                     Text(stringResource(R.string.accion_cancelar), color = CianNeon)
+                }
+                if (onEliminar != null) {
+                    TextButton(onClick = { confirmarEliminar = true }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                        Text(stringResource(R.string.hist_eliminar_saludo), color = RojoCta, fontWeight = FontWeight.Bold)
+                    }
                 }
                 nativo?.let {
                     Spacer(Modifier.height(6.dp))
@@ -243,5 +333,20 @@ fun HojaRegalo(
                 Spacer(Modifier.height(20.dp))
             }
         }
+    }
+    if (confirmarEliminar && onEliminar != null) {
+        AlertDialog(
+            onDismissRequest = { confirmarEliminar = false },
+            title = { Text(stringResource(R.string.hist_eliminar_saludo_titulo)) },
+            text = { Text(stringResource(R.string.hist_eliminar_saludo_cuerpo)) },
+            confirmButton = {
+                TextButton(onClick = { confirmarEliminar = false; onEliminar() }) {
+                    Text(stringResource(R.string.accion_borrar), color = RojoCta, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmarEliminar = false }) { Text(stringResource(R.string.accion_cancelar)) }
+            },
+        )
     }
 }

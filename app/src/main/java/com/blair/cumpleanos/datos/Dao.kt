@@ -145,6 +145,14 @@ interface CumpleDao {
     @Query("UPDATE cumple SET saludadoDia = :dia WHERE id = :id")
     suspend fun editarFechaSaludo(id: Long, dia: Int)
 
+    /** Otro saludo de la misma persona en ese dia, si lo hay. */
+    @Query("SELECT id FROM cumple WHERE personaId = :personaId AND saludadoDia = :dia AND id <> :excepto LIMIT 1")
+    suspend fun otroSaludoEnDia(personaId: Long, dia: Int, excepto: Long): Long?
+
+    /** El saludo vigente mas reciente de la persona: lo que va en Persona.ultimoSaludoDia. */
+    @Query("SELECT MAX(saludadoDia) FROM cumple WHERE personaId = :personaId AND saludado = 1")
+    suspend fun ultimoSaludoDe(personaId: Long): Int?
+
     @Query("UPDATE cumple SET fechaDia = :dia, avisoUltimoDia = NULL WHERE id = :id")
     suspend fun editarFechaCumple(id: Long, dia: Int)
 

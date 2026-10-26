@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Birthday Reminder</string>
+    <!-- Marca: no se traduce. Es el nombre bajo el icono en todos los idiomas. -->
+    <string name="app_name" translatable="false">Recordar Cumpleaños</string>
     <!-- Titulo de marca dentro de la app: igual en todos los idiomas. -->
     <string name="marca" translatable="false">RECORDAR CUMPLEAÑOS</string>
 
@@ -96,7 +97,6 @@
         <item quantity="other">Not greeted · %d days ago</item>
     </plurals>
     <string name="festejo_saludado">Greeted!</string>
-    <string name="vacio_cuerpo">Add the first one and I\'ll let you know when the day comes.</string>
     <string name="desc_anterior">Previous</string>
     <string name="desc_siguiente">Next</string>
     <plurals name="alta_preaviso_dias">
@@ -164,4 +164,19 @@
     <string name="asistencia_chip_si">Yes</string>
     <string name="asistencia_chip_no">No</string>
     <string name="anuncio_etiqueta">Ad</string>
+
+    <!-- Fecha del saludo, editable desde el historial -->
+    <string name="saludo_fecha_etiqueta">Greeted on %1$s</string>
+    <string name="saludo_fecha_titulo">What day did you greet them?</string>
+    <string name="saludo_fecha_futura">That date hasn\'t come yet: the greeting already happened.</string>
+    <string name="saludo_fecha_choque">You already have another greeting to %1$s that day. Pick another date.</string>
+    <string name="saludo_fecha_cambiar">Change the greeting date</string>
+
+
+    <!-- Sin cumpleaños: Velita al lado del boton -->
+    <string name="mascota_globo">ADD THAT BIRTHDAY\nYOU DON\'T WANT TO FORGET!</string>
+    <string name="per_vacio">No one added yet</string>
+    <string name="hist_eliminar_saludo">Delete this greeting</string>
+    <string name="hist_eliminar_saludo_titulo">Delete this greeting?</string>
+    <string name="hist_eliminar_saludo_cuerpo">It\'s removed from the history. The birthday doesn\'t go back to not greeted.</string>
 </resources>

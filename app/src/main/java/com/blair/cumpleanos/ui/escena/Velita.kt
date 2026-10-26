@@ -48,8 +48,11 @@ import com.blair.cumpleanos.ui.theme.NocheBase
 import com.blair.cumpleanos.ui.theme.Resplandor2
 import com.blair.cumpleanos.ui.theme.RojoCta
 
-/** Cara de la mascota. FESTEJO: ojos cerrados de felicidad, boca grande y brazos arriba. */
-enum class Expresion { CONTENTA, FESTEJO }
+/**
+ * Cara de la mascota. FESTEJO: ojos cerrados de felicidad, boca grande y brazos arriba.
+ * SENALA: contenta, con el brazo derecho estirado hacia abajo, al boton de agregar.
+ */
+enum class Expresion { CONTENTA, FESTEJO, SENALA }
 
 // Todo se dibuja en unidades de un lienzo de 100 x 160. El cuerpo va de
 // x 18..82 e y 66..149: 64 x 83, relacion 1:1.3, rechoncho y no un cilindro.
@@ -210,6 +213,8 @@ fun Velita(
     llamaViva: Boolean = true,
     destellos: Boolean = true,
     encendidoLlama: () -> Float = { 1f },
+    /** 0..1, rebote de la mano que señala. Solo con [Expresion.SENALA]. */
+    senal: () -> Float = { 0f },
 ) {
     val parpadeo: State<Float> = if (llamaViva) {
         rememberInfiniteTransition(label = "llama").animateFloat(
@@ -229,7 +234,7 @@ fun Velita(
                 val s = size.width / ANCHO_U
                 onDrawBehind {
                     scale(s, s, Offset.Zero) {
-                        dibujarVelita(expresion, parpadeo.value * encendidoLlama(), destellos, reflejo)
+                        dibujarVelita(expresion, parpadeo.value * encendidoLlama(), destellos, reflejo, senal())
                     }
                 }
             },
@@ -237,13 +242,13 @@ fun Velita(
 }
 
 /** Velita entera en unidades de 100 x 160. Tambien la usa el festejo. */
-fun DrawScope.dibujarVelita(expresion: Expresion, llama: Float, destellos: Boolean, reflejo: Boolean) {
+fun DrawScope.dibujarVelita(expresion: Expresion, llama: Float, destellos: Boolean, reflejo: Boolean, senal: Float = 0f) {
     if (reflejo) {
         // Reflejo en el piso: la misma silueta espejada, alfa 0.18, desvanecida.
         drawIntoCanvas { c ->
             c.saveLayer(Rect(0f, PIE_VELITA_U, ANCHO_U, PIE_VELITA_U + REFLEJO_U), Paint())
             withTransform({ scale(1f, -1f, Offset(50f, PIE_VELITA_U)) }) {
-                brazos(expresion, 0.18f)
+                brazos(expresion, 0.18f, senal)
                 drawPath(Piezas.cuerpo, Pinceles.cuerpo, alpha = 0.18f)
             }
             drawRect(
@@ -266,7 +271,7 @@ fun DrawScope.dibujarVelita(expresion: Expresion, llama: Float, destellos: Boole
         drawCircle(Pinceles.sombra, 24f, Offset(50f, PIE_VELITA_U))
     }
 
-    brazos(expresion, 1f)
+    brazos(expresion, 1f, senal)
 
     drawPath(Piezas.cuerpo, Pinceles.cuerpo)
     clipPath(Piezas.cuerpo) {
@@ -308,20 +313,41 @@ private fun DrawScope.destelloU(c: Offset, r: Float, color: Color) {
     translate(c.x, c.y) { scale(r, r, Offset.Zero) { drawPath(Piezas.destello, color) } }
 }
 
-private fun DrawScope.brazos(expresion: Expresion, alfa: Float) {
+/** Hacia donde apunta el brazo que señala: abajo y apenas afuera, al boton que tiene debajo. */
+private val DIRECCION_SENAL = Offset(0.34f, 0.94f)
+
+private fun DrawScope.brazos(expresion: Expresion, alfa: Float, senal: Float) {
     val trazo = Stroke(width = 9f, cap = StrokeCap.Round)
     val izq: Pair<Offset, Offset>
     val der: Pair<Offset, Offset>
-    if (expresion == Expresion.FESTEJO) {
-        izq = Offset(22f, 104f) to Offset(9f, 86f)
-        der = Offset(78f, 104f) to Offset(91f, 86f)
-    } else {
-        izq = Offset(22f, 112f) to Offset(12f, 126f)
-        der = Offset(78f, 112f) to Offset(88f, 126f)
+    when (expresion) {
+        Expresion.FESTEJO -> {
+            izq = Offset(22f, 104f) to Offset(9f, 86f)
+            der = Offset(78f, 104f) to Offset(91f, 86f)
+        }
+        Expresion.SENALA -> {
+            izq = Offset(22f, 112f) to Offset(12f, 126f)
+            // Estirado y largo; el rebote lo alarga y lo acorta unas unidades.
+            val hombro = Offset(78f, 108f)
+            der = hombro to hombro + DIRECCION_SENAL * (30f + 7f * senal)
+        }
+        Expresion.CONTENTA -> {
+            izq = Offset(22f, 112f) to Offset(12f, 126f)
+            der = Offset(78f, 112f) to Offset(88f, 126f)
+        }
     }
     for ((a, b) in listOf(izq, der)) {
         drawLine(CianProfundo, a, b, strokeWidth = trazo.width, cap = StrokeCap.Round, alpha = alfa)
         drawLine(CianClaro, a, b, strokeWidth = trazo.width - 3.5f, cap = StrokeCap.Round, alpha = alfa * 0.8f)
+    }
+    if (expresion == Expresion.SENALA) {
+        // La mano: una bolita al final del brazo y un dedo estirado, para que se
+        // lea "señala" y no "brazo caido".
+        val punta = der.second + DIRECCION_SENAL * 9f
+        drawLine(CianProfundo, der.second, punta, strokeWidth = 5f, cap = StrokeCap.Round, alpha = alfa)
+        drawLine(CianClaro, der.second, punta, strokeWidth = 2.6f, cap = StrokeCap.Round, alpha = alfa)
+        drawCircle(CianProfundo, 6.2f, der.second, alpha = alfa)
+        drawCircle(CianClaro, 4.6f, der.second, alpha = alfa)
     }
 }
 

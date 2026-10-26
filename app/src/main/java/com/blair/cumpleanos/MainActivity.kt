@@ -1,10 +1,15 @@
 package com.blair.cumpleanos
 
 import android.Manifest
+import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -47,8 +52,17 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.blair.cumpleanos.datos.CumpleUi
 import com.blair.cumpleanos.notif.EXTRA_ASISTENCIA
+import com.blair.cumpleanos.notif.ACCION_MADRUGADA
+import com.blair.cumpleanos.notif.Madrugada
 import com.blair.cumpleanos.notif.TickWorker
+import com.blair.cumpleanos.repo.FechaSaludo
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.zIndex
 import com.blair.cumpleanos.ui.AltaPantalla
+import com.blair.cumpleanos.ui.GloboMascota
+import com.blair.cumpleanos.ui.MascotaInvita
 import com.blair.cumpleanos.ui.BannerAdaptativo
 import com.blair.cumpleanos.ui.BotonPrincipal
 import com.blair.cumpleanos.ui.Festejo
@@ -60,12 +74,20 @@ import com.blair.cumpleanos.ui.ListaPantalla
 import com.blair.cumpleanos.ui.ListaViewModel
 import com.blair.cumpleanos.ui.LugarNativo
 import com.blair.cumpleanos.ui.PantallaConNativos
+import com.blair.cumpleanos.ui.debePedirPermisos
 import com.blair.cumpleanos.ui.SplashPantalla
 import com.blair.cumpleanos.ui.esVacio
 import com.blair.cumpleanos.ui.escena.Escenario
 import com.blair.cumpleanos.ui.escena.Intensidad
 import com.blair.cumpleanos.ui.nativoEn
 import com.blair.cumpleanos.ui.theme.RecordarCumpleanosTheme
+import java.time.LocalDate
+
+/** epochDay de la ultima vez que se pidieron permisos, en prefs `ajustes`. */
+private const val PREF_PERMISOS_DIA = "permisos_pedidos_dia"
+
+/** Mas rapido que esto, el "no" lo dio el sistema sin mostrar la ventana. */
+private const val RESPUESTA_INSTANTANEA_MS = 400L
 
 class MainActivity : ComponentActivity() {
 
@@ -85,14 +107,72 @@ class MainActivity : ComponentActivity() {
         leerAsistencia(intent)
     }
 
-    private val permiso = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    /** Cuando se lanzo el pedido de notificaciones: ver notificacionesBloqueadas. */
+    private var pedidoNotifMillis = 0L
 
-    /** POST_NOTIFICATIONS solo existe desde API 33. */
-    private fun pedirPermisoNotificaciones() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        val ok = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-        if (ok != PackageManager.PERMISSION_GRANTED) permiso.launch(Manifest.permission.POST_NOTIFICATIONS)
+    private val permisoNotif = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (!ok && notificacionesBloqueadas()) abrirAjustesNotificaciones()
     }
+
+    /** Al volver de la ventana de bateria, permita o no, sigue la de notificaciones. */
+    private val permisoBateria = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        pedirNotificaciones()
+    }
+
+    /**
+     * Pide lo que falte, uno tras otro, DIRECTO con la ventana PERMITIR del
+     * sistema (sin cartel previo): bateria y despues notificaciones. Nada de
+     * mandar a Ajustes con pasos: en Ya La Tomé, con usuarios reales, nadie llegaba.
+     */
+    private fun pedirPermisos() {
+        if (exentaDeBateria()) return pedirNotificaciones()
+        try {
+            @SuppressLint("BatteryLife")
+            val pedido = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                .setData(Uri.fromParts("package", packageName, null))
+            permisoBateria.launch(pedido)
+        } catch (_: ActivityNotFoundException) {
+            // Capa sin la ventana directa: se sigue con notificaciones, no se manda a Ajustes.
+            pedirNotificaciones()
+        }
+    }
+
+    private fun pedirNotificaciones() {
+        if (notificacionesPermitidas()) return
+        pedidoNotifMillis = System.currentTimeMillis()
+        permisoNotif.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    /**
+     * Android dejo de mostrar la ventana: tras dos rechazos el pedido vuelve negado
+     * en el acto, sin que el usuario vea nada. La respuesta instantanea y sin
+     * rationale es la unica señal de eso que da el sistema.
+     */
+    private fun notificacionesBloqueadas(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) &&
+            System.currentTimeMillis() - pedidoNotifMillis < RESPUESTA_INSTANTANEA_MS
+
+    /** Con la ventana bloqueada: la pantalla de notificaciones de ESTA app, un interruptor arriba. */
+    private fun abrirAjustesNotificaciones() {
+        abrir(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+    }
+
+    private fun abrir(i: Intent) {
+        try {
+            startActivity(i)
+        } catch (_: ActivityNotFoundException) {
+            // Algunas capas de fabricante no exponen la pantalla: no hay a donde ir.
+        }
+    }
+
+    /** POST_NOTIFICATIONS solo existe desde API 33: antes se tiene siempre. */
+    private fun notificacionesPermitidas(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    private fun exentaDeBateria(): Boolean =
+        getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(packageName) == true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Antes de super: el splash del sistema muestra el icono sobre la noche
@@ -116,13 +196,17 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
-        pedirPermisoNotificaciones()
         leerAsistencia(intent)
         // Solo debug: cmd jobscheduler run -f no saltea el initialDelay de WorkManager.
         // adb shell am start -n com.blair.cumpleanos/.MainActivity --ez tick true
         if (BuildConfig.DEBUG && intent?.getBooleanExtra("tick", false) == true) {
             WorkManager.getInstance(this)
                 .enqueue(OneTimeWorkRequestBuilder<TickWorker>().build())
+        }
+        // Solo debug: dispara la alarma de la madrugada sin esperar a las 00:05.
+        // adb shell am start -n com.blair.cumpleanos.debug/com.blair.cumpleanos.MainActivity --ez madrugada true
+        if (BuildConfig.DEBUG && intent?.getBooleanExtra("madrugada", false) == true) {
+            sendBroadcast(Intent(this, Madrugada::class.java).setAction(ACCION_MADRUGADA))
         }
         val app = application as CumpleanosApp
         // El show de apertura va solo en arranque en frio, no al rotar.
@@ -140,14 +224,13 @@ class MainActivity : ComponentActivity() {
                 val pasados by vm.pasados.collectAsStateWithLifecycle()
                 val proximos by vm.proximos.collectAsStateWithLifecycle()
                 val conHistorial by vm.conHistorial.collectAsStateWithLifecycle()
-                val vacio = esVacio(pasados, proximos, personas) && conHistorial.isEmpty() && !enAlta
                 val haptico = LocalHapticFeedback.current
 
                 Box(Modifier.fillMaxSize()) {
-                    // Detras de TODO. Completa en splash, vacio y festejo; atenuada
+                    // Detras de TODO. Completa en splash y festejo; atenuada
                     // con tarjetas encima, o no se lee nada.
                     Escenario(
-                        intensidad = if (enSplash || vacio || festejando) Intensidad.COMPLETA else Intensidad.ATENUADA,
+                        intensidad = if (enSplash || festejando) Intensidad.COMPLETA else Intensidad.ATENUADA,
                         encendido = { encendido.value },
                     )
                     Crossfade(targetState = enSplash, animationSpec = tween(550), label = "apertura") { splash ->
@@ -170,6 +253,20 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     Festejo(festejo, onActivo = { festejando = it })
+
+                    // Una vez por dia mientras falte algo, despues del splash y sin el alta
+                    // encima: una ventana del sistema sobre el splash se lee como error de arranque.
+                    var permisosDecididos by rememberSaveable { mutableStateOf(false) }
+                    val libre = !enSplash && !enAlta
+                    LaunchedEffect(libre) {
+                        if (permisosDecididos || !libre) return@LaunchedEffect
+                        permisosDecididos = true
+                        val hoy = LocalDate.now().toEpochDay()
+                        val ultimo = app.prefs.getLong(PREF_PERMISOS_DIA, -1L).takeIf { it >= 0 }
+                        if (!debePedirPermisos(exentaDeBateria(), notificacionesPermitidas(), ultimo, hoy)) return@LaunchedEffect
+                        app.prefs.edit().putLong(PREF_PERMISOS_DIA, hoy).apply()
+                        pedirPermisos()
+                    }
                 }
             }
         }
@@ -202,16 +299,19 @@ class MainActivity : ComponentActivity() {
         // guarda recien al confirmar.
         var aSaludar by remember { mutableStateOf<FilaCumple?>(null) }
         var regaloHistorial by remember { mutableStateOf<CumpleUi?>(null) }
+        var errorFecha by remember { mutableStateOf<FechaSaludo?>(null) }
+        LaunchedEffect(regaloHistorial?.id) { errorFecha = null }
         // FUERA del if (enAlta) y de la LazyColumn: con el alta abierta la lista sale
         // de composicion pero sus lugares siguen anotados, asi el coordinador los
         // PAUSA (ALTA gana) en vez de destruirlos y pedir otros al volver.
-        // App sin datos: ninguno en la lista, solo el banner. El del alta va siempre.
-        val listaVacia = esVacio(pasados, proximos, personas) && conHistorial.isEmpty()
+        // Sin cumpleaños (aunque quede historial): ninguno en la lista, solo el
+        // banner, hasta que se cargue uno. El del alta va siempre.
+        val sinCumples = esVacio(pasados, proximos, personas)
         // Anotados no es pedidos: se pide solo el turno que ubicarNativos puso y
         // que esta en pantalla. Anotarlos todos fijos hace que un turno que se corre
         // o desaparece y vuelve conserve su anuncio en vez de pedir otro.
         val nativosLista = buildMap {
-            if (!listaVacia) LugarNativo.entries.filter { it.enLista }.forEach { put(it, nativoEn(it)) }
+            if (!sinCumples) LugarNativo.entries.filter { it.enLista }.forEach { put(it, nativoEn(it)) }
         }
 
         Scaffold(
@@ -222,16 +322,34 @@ class MainActivity : ComponentActivity() {
             floatingActionButtonPosition = FabPosition.Center,
             floatingActionButton = {
                 if (!enAlta) {
-                    BotonPrincipal(
-                        stringResource(R.string.accion_agregar),
-                        onClick = { onAlta(true) },
-                        icono = Icons.Filled.Add,
-                        destacado = true,
-                        // El halo baja hasta 30dp bajo el boton y el Scaffold deja
-                        // 16dp: sin esto pisa el banner, y tapar un anuncio con UI
-                        // de la app es violacion de politica.
-                        modifier = Modifier.padding(bottom = 16.dp),
-                    )
+                    // Sin cumpleaños, Velita se para arriba del boton y lo señala,
+                    // con su globo arriba (como Ya La Tomé y Por Vencer). Por el
+                    // estado: vuelve sola cada vez que se borran todos.
+                    // El halo baja hasta 30dp bajo el boton y el Scaffold deja 16dp:
+                    // el padding evita que pise el banner, y tapar un anuncio con UI
+                    // de la app es violacion de politica.
+                    Column(Modifier.padding(bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (sinCumples) {
+                            GloboMascota(
+                                stringResource(R.string.mascota_globo),
+                                onClick = { onAlta(true) },
+                                // Pegado a Velita: la cola casi toca la punta de la llama.
+                                // Por delante, asi la llama que crece queda detras.
+                                modifier = Modifier
+                                    .zIndex(2f)
+                                    .offset(y = 34.dp)
+                                    .padding(horizontal = 24.dp),
+                            )
+                            // Por encima del boton: la mano que lo señala se apoya sobre el.
+                            MascotaInvita(Modifier.zIndex(1f).offset(y = 14.dp))
+                        }
+                        BotonPrincipal(
+                            stringResource(R.string.accion_agregar),
+                            onClick = { onAlta(true) },
+                            icono = Icons.Filled.Add,
+                            destacado = true,
+                        )
+                    }
                 }
             },
         ) { innerPadding ->
@@ -302,7 +420,7 @@ class MainActivity : ComponentActivity() {
                 etiqueta = stringResource(R.string.regalo_real_etiqueta),
                 inicial = f.c.regaloPlan,
                 textoBoton = stringResource(R.string.accion_guardar_saludo),
-                onGuardar = { regalo ->
+                onGuardar = { regalo, _ ->
                     aSaludar = null
                     onSaludar(f.c.personaId, f.c.id, regalo)
                 },
@@ -317,11 +435,29 @@ class MainActivity : ComponentActivity() {
                 etiqueta = stringResource(R.string.regalo_real_etiqueta),
                 inicial = c.regaloReal,
                 textoBoton = stringResource(R.string.accion_guardar),
-                onGuardar = { regalo ->
+                onGuardar = { regalo, dia ->
                     vm.anotarRegaloReal(c.id, regalo)
-                    regaloHistorial = null
+                    if (dia == null || dia == c.saludadoDia) {
+                        regaloHistorial = null
+                    } else {
+                        // La fecha se valida contra la base: con aviso, la hoja queda abierta.
+                        vm.editarFechaSaludo(c.id, dia) { r ->
+                            if (r == FechaSaludo.OK) regaloHistorial = null else errorFecha = r
+                        }
+                    }
                 },
                 onCerrar = { regaloHistorial = null },
+                fechaSaludoInicial = c.saludadoDia,
+                errorFecha = when (errorFecha) {
+                    FechaSaludo.FUTURA -> stringResource(R.string.saludo_fecha_futura)
+                    FechaSaludo.CHOQUE -> stringResource(R.string.saludo_fecha_choque, c.nombre)
+                    FechaSaludo.OK, null -> null
+                },
+                onFechaCambiada = { errorFecha = null },
+                onEliminar = {
+                    vm.eliminarSaludo(c.id)
+                    regaloHistorial = null
+                },
                 asistioInicial = c.asistio,
                 onAsistencia = if (c.fechaFestejoDia != null || c.asistio != null) {
                     { vm.responderAsistencia(c.id, it) }

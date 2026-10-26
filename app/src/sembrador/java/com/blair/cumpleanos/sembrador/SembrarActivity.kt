@@ -16,7 +16,9 @@ import java.time.LocalDate
  * Carga 16 personas de prueba para medir fluidez y sacar capturas.
  *
  * Solo en debug y medicion (src/sembrador): release no la trae. Se dispara con
- *   adb shell am start -n <paquete>/com.blair.cumpleanos.sembrador.SembrarActivity [--ez tick true]
+ *   adb shell am start -n <paquete>/com.blair.cumpleanos.sembrador.SembrarActivity [--ez tick true] [--ei cantidad N]
+ * cantidad: las primeras N fijas; mas de 16 agrega personas genericas repartidas
+ * en el año (para probar la densidad de nativos con muchas filas).
  * Nombres y regalos largos a proposito: son los que desbordan en español.
  */
 class SembrarActivity : Activity() {
@@ -82,11 +84,16 @@ class SembrarActivity : Activity() {
         val espanol = resources.configuration.locales[0].language == "es"
         fun t(texto: String?) = if (espanol || texto == null) texto else enIngles[texto] ?: texto
         CoroutineScope(Dispatchers.IO).launch {
-            fijas.forEach { f ->
+            val cantidad = intent.getIntExtra("cantidad", fijas.size).coerceAtLeast(0)
+            val extras = (fijas.size until cantidad).map { i ->
+                val fecha = LocalDate.now().plusDays(11L + i * 13L)
+                Fija("Persona ${i + 1}", fecha.dayOfMonth, fecha.monthValue, 1980 + i % 30)
+            }
+            (fijas.take(cantidad) + extras).forEach { f ->
                 val festejo = f.festejo?.let { (d, m) -> LocalDate.now().withMonth(m).withDayOfMonth(d).toEpochDay().toInt() }
                 repo.crear(t(f.nombre)!!, f.dia, f.mes, f.anio, f.preavisos, hoy - f.cargadaHace, t(f.regalo), festejo)
             }
-            Log.i("Sembrador", "sembradas ${fijas.size}")
+            Log.i("Sembrador", "sembradas $cantidad")
             runOnUiThread { finish() }
         }
     }

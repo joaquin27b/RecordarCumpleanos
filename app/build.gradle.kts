@@ -22,8 +22,8 @@ android {
         applicationId = "com.blair.cumpleanos"
         minSdk = 26
         targetSdk = 37
-        versionCode = 7
-        versionName = "1.2.2"
+        versionCode = 8
+        versionName = "1.3.0"
         buildConfigField("boolean", "PEDIR_ANUNCIO", "true")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -50,6 +50,7 @@ android {
             buildConfigField("String", "AD_UNIT_BANNER", "\"ca-app-pub-3940256099942544/9214589741\"")
             // Native advanced de PRUEBA.
             buildConfigField("String", "AD_UNIT_NATIVE", "\"ca-app-pub-3940256099942544/2247696110\"")
+            buildConfigField("String", "AD_UNIT_NATIVE_FINAL", "\"ca-app-pub-3940256099942544/2247696110\"")
             manifestPlaceholders["adAppId"] = "ca-app-pub-3940256099942544~3347511713"
         }
         release {
@@ -58,6 +59,7 @@ android {
             buildConfigField("String", "AD_UNIT_BANNER", "\"ca-app-pub-6760097434219921/3170801198\"")
             // Native advanced, la misma para todos los lugares (tarjeta, hojas, alta, historial).
             buildConfigField("String", "AD_UNIT_NATIVE", "\"ca-app-pub-6760097434219921/8011490915\"")
+            buildConfigField("String", "AD_UNIT_NATIVE_FINAL", "\"ca-app-pub-6760097434219921/6727036276\"")
             manifestPlaceholders["adAppId"] = "ca-app-pub-6760097434219921~8061744806"
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
@@ -77,6 +79,7 @@ android {
             buildConfigField("boolean", "PEDIR_ANUNCIO", "false")
             buildConfigField("String", "AD_UNIT_BANNER", "\"ca-app-pub-3940256099942544/9214589741\"")
             buildConfigField("String", "AD_UNIT_NATIVE", "\"ca-app-pub-3940256099942544/2247696110\"")
+            buildConfigField("String", "AD_UNIT_NATIVE_FINAL", "\"ca-app-pub-3940256099942544/2247696110\"")
             manifestPlaceholders["adAppId"] = "ca-app-pub-3940256099942544~3347511713"
         }
     }

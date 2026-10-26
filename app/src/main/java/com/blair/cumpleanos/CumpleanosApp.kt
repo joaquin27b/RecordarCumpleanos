@@ -8,6 +8,7 @@ import com.blair.cumpleanos.datos.BaseDatos
 import com.blair.cumpleanos.datos.MIGRACION_1_2
 import com.blair.cumpleanos.datos.MIGRACION_2_3
 import com.blair.cumpleanos.notif.Canales
+import com.blair.cumpleanos.notif.Madrugada
 import com.blair.cumpleanos.notif.TickWorker
 import com.blair.cumpleanos.repo.Repositorio
 import com.google.android.gms.ads.MobileAds
@@ -45,6 +46,7 @@ class CumpleanosApp : Application() {
         super.onCreate()
         Canales.registrar(this)
         TickWorker.programar(this)
+        Madrugada.programar(this)
         // initialize() hace I/O de disco y red: en el Main Thread es ANR de arranque.
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { MobileAds.initialize(this@CumpleanosApp) }
     }

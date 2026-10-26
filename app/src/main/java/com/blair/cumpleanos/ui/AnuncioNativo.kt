@@ -32,6 +32,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,7 @@ import com.blair.cumpleanos.R
 import com.blair.cumpleanos.ui.theme.BlancoEscena
 import com.blair.cumpleanos.ui.theme.Escenario1
 import com.blair.cumpleanos.ui.theme.EscenarioBorde
+import com.blair.cumpleanos.ui.theme.NocheBase
 import com.blair.cumpleanos.ui.theme.TextoSecundario
 import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdLoader
@@ -60,8 +62,8 @@ import kotlinx.coroutines.flow.filter
 private const val TAG = "Nativo"
 
 /**
- * Donde puede ir un nativo. ALTA y HOJA tapan la lista: de esos se muestra uno
- * solo, el de mayor prioridad (1 gana).
+ * Donde puede ir un nativo. ALTA, HOJA y DIALOGO tapan la lista: de esos se
+ * muestra uno solo, el de mayor prioridad (1 gana).
  *
  * Los [enLista] son turnos, no lugares fijos: [ubicarNativos] decide despues de
  * que seccion va cada uno segun cuantas filas hay. Cada turno se pide la primera
@@ -72,28 +74,65 @@ enum class LugarNativo(val prioridad: Int, val tamano: TamanoNativo, val enLista
     /** AltaPantalla, debajo de Guardar. Tapa la lista entera: gana a todos. */
     ALTA(1, TamanoNativo.COMPLETO),
 
-    /** Al pie de una hoja abierta: persona, regalo, periodo. Tapa la lista. */
-    HOJA(2, TamanoNativo.COMPACTO),
+    /**
+     * Al pie de una hoja abierta: persona, regalo, periodo. Tapa la lista. Mini:
+     * toda ventana lleva el nativo mas chico posible. Las confirmaciones y los
+     * calendarios no llevan: el anuncio quedaria pegado a Borrar/Cancelar y
+     * encima de otro anuncio.
+     */
+    HOJA(2, TamanoNativo.MINI),
 
-    LISTA_1(3, TamanoNativo.COMPACTO, enLista = true),
-    LISTA_2(4, TamanoNativo.COMPACTO, enLista = true),
-    LISTA_3(5, TamanoNativo.COMPACTO, enLista = true),
-    LISTA_4(6, TamanoNativo.COMPACTO, enLista = true),
+    /** Ventana de borrar historial. El scrim deja ver la lista: la tapa igual que una hoja. */
+    DIALOGO(3, TamanoNativo.MINI),
+
+    LISTA_1(4, TamanoNativo.COMPACTO, enLista = true),
+    LISTA_2(5, TamanoNativo.COMPACTO, enLista = true),
+    LISTA_3(6, TamanoNativo.COMPACTO, enLista = true),
+    LISTA_4(7, TamanoNativo.COMPACTO, enLista = true),
+
+    /**
+     * Al final de todo el contenido (despues del historial). Mediano, como el del
+     * final de Ya La Tomé: con media mas bajo que el del alta, para que no ocupe
+     * la pantalla y el scroll no quede bajo el dedo.
+     */
+    LISTA_FINAL(8, TamanoNativo.MEDIANO, enLista = true),
 }
 
 enum class TamanoNativo {
+    /** Una linea de alto fijo: etiqueta, icono, titulo y CTA. Para una ventana chica. */
+    MINI,
+
     /** Una fila de alto fijo: etiqueta, icono, titulo, anunciante y CTA. Sin media. */
     COMPACTO,
 
-    /** Con media, topeado a [ALTO_MAX_MEDIA_DP]. Solo en el alta. */
+    /** Con media, topeado a [ALTO_MAX_MEDIA_DP]. Solo en el alta: en la lista traba el scroll. */
     COMPLETO,
+
+    /** Como el completo, con el media topeado a [ALTO_MAX_MEDIA_MEDIANO_DP]. Al final de la lista. */
+    MEDIANO,
 }
 
 /** Tope del media del completo: una creatividad vertical real ocupaba media pantalla. */
 private const val ALTO_MAX_MEDIA_DP = 180
 
+/** Tope del media del mediano. 120 es el minimo de AdMob para el media. */
+private const val ALTO_MAX_MEDIA_MEDIANO_DP = 120
+
+/**
+ * Aire entre los assets y el borde de la NativeAdView. Pegados al borde, el
+ * redondeo de dp a px los dejaba un pixel afuera segun el ancho de pantalla, y
+ * el validador marcaba "Advertiser assets outside native ad view" (en la lista
+ * si, en el alta no: 16 y 18dp de margen redondean distinto). Lo mismo se
+ * arreglo asi en Ya La Tomé. Se descuenta del padding de afuera: el tamaño
+ * visible no cambia.
+ */
+private const val AIRE_ASSETS_DP = 4
+
 /** Alto fijo de la fila del compacto: dos lineas de titulo y una de anunciante. */
 internal const val ALTO_COMPACTO_DP = 64
+
+/** Alto fijo del mini: una sola linea de titulo. */
+internal const val ALTO_MINI_DP = 44
 
 /**
  * Coordinador con scope de ViewModel: girar el telefono recrea la actividad pero
@@ -117,7 +156,7 @@ class CoordinadorNativos(private val ctx: Context, private val pedir: Boolean) {
     /** Fallo una vez: no se reintenta mientras el lugar siga en pantalla. */
     private val fallidos = mutableSetOf<LugarNativo>()
 
-    /** El de ALTA/HOJA que se muestra; null si no hay ninguno abierto. */
+    /** El de ALTA/HOJA/DIALOGO que se muestra; null si no hay ninguno abierto. */
     val activo: LugarNativo? get() = anotados.keys.filter { !it.enLista }.minByOrNull { it.prioridad }
 
     /** Hay una hoja o el alta encima: los de la lista no se ven. */
@@ -163,7 +202,9 @@ class CoordinadorNativos(private val ctx: Context, private val pedir: Boolean) {
         if (!pedir || lugar in anuncios || lugar in enCurso || lugar in fallidos) return
         enCurso += lugar
         Log.i(TAG, "request lugar=$lugar")
-        AdLoader.Builder(ctx, BuildConfig.AD_UNIT_NATIVE)
+        // El del final tiene su propia unidad: se mide aparte en el panel de AdMob.
+        val unidad = if (lugar == LugarNativo.LISTA_FINAL) BuildConfig.AD_UNIT_NATIVE_FINAL else BuildConfig.AD_UNIT_NATIVE
+        AdLoader.Builder(ctx, unidad)
             .forNativeAd { ad ->
                 enCurso -= lugar
                 // Llego tarde, con el lugar ya cerrado: no se muestra nunca.
@@ -271,9 +312,13 @@ internal data class ColoresNativo(
     val textoBoton: Int,
 )
 
-/** Gris neutro: el CTA no puede parecerse al cian, al degradé, al dorado ni al rojo de la app. */
-private const val GRIS_CTA = 0xFFD2D2D6.toInt()
-private const val TINTA_CTA = 0xFF1E1E22.toInt()
+/**
+ * CTA apagado, del violeta de la tarjeta y apenas mas claro: se lee como el boton
+ * del anuncio pero se funde con el fondo. No compite con NUEVO CUMPLEAÑOS ni YA
+ * SALUDÉ, y no se parece al cian, al degradé, al dorado ni al rojo de la app.
+ */
+private const val FONDO_CTA = 0xFF3B2A86.toInt()
+private const val TINTA_CTA = 0xFFCFC8EE.toInt()
 
 /**
  * El nativo en su propia tarjeta, con el lenguaje de la app: esquinas de 24dp,
@@ -289,7 +334,7 @@ fun TarjetaNativo(anuncio: NativeAd, tamano: TamanoNativo, modifier: Modifier = 
         texto = BlancoEscena.toArgb(),
         mutado = TextoSecundario.toArgb(),
         etiqueta = BlancoEscena.toArgb(),
-        boton = GRIS_CTA,
+        boton = FONDO_CTA,
         textoBoton = TINTA_CTA,
     )
     val etiqueta = stringResource(R.string.anuncio_etiqueta)
@@ -297,23 +342,26 @@ fun TarjetaNativo(anuncio: NativeAd, tamano: TamanoNativo, modifier: Modifier = 
     val caja = modifier
         .fillMaxWidth()
         .clip(forma)
-        .background(Escenario1.copy(alpha = 0.55f))
+        // Solido: translucido, el confeti y los destellos del escenario se veian a
+        // traves del anuncio y le cortaban el borde.
+        .background(Escenario1.copy(alpha = 0.55f).compositeOver(NocheBase))
         .border(1.dp, EscenarioBorde.copy(alpha = 0.6f), forma)
-    if (tamano == TamanoNativo.COMPACTO) {
+    if (tamano == TamanoNativo.MINI || tamano == TamanoNativo.COMPACTO) {
+        val mini = tamano == TamanoNativo.MINI
         AndroidView(
-            factory = { c -> VistaNativoCompacto(c) },
+            factory = { c -> VistaNativoCompacto(c, mini) },
             update = { it.mostrar(anuncio, colores, etiqueta) },
             onRelease = { it.raiz.destroy() },
-            modifier = caja.padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = caja.padding(horizontal = (12 - AIRE_ASSETS_DP).dp, vertical = if (mini) 2.dp else 6.dp),
         )
         return
     }
     AndroidView(
-        factory = { c -> VistaNativo(c, ALTO_MAX_MEDIA_DP) },
+        factory = { c -> VistaNativo(c, if (tamano == TamanoNativo.MEDIANO) ALTO_MAX_MEDIA_MEDIANO_DP else ALTO_MAX_MEDIA_DP) },
         update = { it.mostrar(anuncio, colores, etiqueta) },
         // Libera la VISTA; el NativeAd lo destruye el coordinador.
         onRelease = { it.raiz.destroy() },
-        modifier = caja.padding(16.dp),
+        modifier = caja.padding((16 - AIRE_ASSETS_DP).dp),
     )
 }
 
@@ -355,7 +403,10 @@ internal class VistaNativo(ctx: Context, altoMaxMedia: Int) : LinearLayout(ctx) 
     private val accion = TextView(ctx)
 
     init {
-        val contenido = LinearLayout(ctx).apply { orientation = VERTICAL }
+        val contenido = LinearLayout(ctx).apply {
+            orientation = VERTICAL
+            setPadding(dp(AIRE_ASSETS_DP), dp(AIRE_ASSETS_DP), dp(AIRE_ASSETS_DP), dp(AIRE_ASSETS_DP))
+        }
 
         val cabecera = LinearLayout(ctx).apply {
             orientation = HORIZONTAL
@@ -467,8 +518,10 @@ internal class VistaNativo(ctx: Context, altoMaxMedia: Int) : LinearLayout(ctx) 
  * FIJO con etiqueta "Anuncio", icono, titulo (2 lineas con "…"), anunciante
  * (1 linea) y CTA. Sin media. Un titular largo no estira la tarjeta. El CTA deja
  * libre la esquina de arriba a la derecha, donde el SDK pone AdChoices.
+ *
+ * [mini]: una sola linea de titulo, sin anunciante, mas bajo. Para ventanas.
  */
-internal class VistaNativoCompacto(ctx: Context) : LinearLayout(ctx) {
+internal class VistaNativoCompacto(ctx: Context, private val mini: Boolean = false) : LinearLayout(ctx) {
     private fun dp(v: Int) = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics,
     ).toInt()
@@ -484,6 +537,7 @@ internal class VistaNativoCompacto(ctx: Context) : LinearLayout(ctx) {
         val fila = LinearLayout(ctx).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(AIRE_ASSETS_DP), dp(2), dp(AIRE_ASSETS_DP), dp(2))
         }
         etiqueta.apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
@@ -492,11 +546,12 @@ internal class VistaNativoCompacto(ctx: Context) : LinearLayout(ctx) {
         }
         fila.addView(etiqueta, LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { marginEnd = dp(8) })
         icono.adjustViewBounds = true
-        fila.addView(icono, LayoutParams(dp(28), dp(28)).apply { marginEnd = dp(8) })
+        val ladoIcono = if (mini) 24 else 28
+        fila.addView(icono, LayoutParams(dp(ladoIcono), dp(ladoIcono)).apply { marginEnd = dp(8) })
         titulo.apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             typeface = Typeface.DEFAULT_BOLD
-            maxLines = 2
+            maxLines = if (mini) 1 else 2
             ellipsize = TextUtils.TruncateAt.END
         }
         anunciante.apply {
@@ -522,10 +577,10 @@ internal class VistaNativoCompacto(ctx: Context) : LinearLayout(ctx) {
             },
         )
 
-        raiz.addView(fila, FrameLayout.LayoutParams(MATCH_PARENT, dp(ALTO_COMPACTO_DP)))
+        raiz.addView(fila, FrameLayout.LayoutParams(MATCH_PARENT, dp(if (mini) ALTO_MINI_DP else ALTO_COMPACTO_DP)))
         raiz.headlineView = titulo
         raiz.advertiserView = anunciante
-        raiz.iconView = icono
+        if (!mini) raiz.iconView = icono
         raiz.callToActionView = accion
         addView(raiz, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
     }
@@ -552,9 +607,11 @@ internal class VistaNativoCompacto(ctx: Context) : LinearLayout(ctx) {
 
         titulo.text = ad.headline
         anunciante.text = ad.advertiser
-        anunciante.visibility = if (ad.advertiser.isNullOrBlank()) GONE else VISIBLE
+        anunciante.visibility = if (mini || ad.advertiser.isNullOrBlank()) GONE else VISIBLE
         icono.setImageDrawable(ad.icon?.drawable)
-        icono.visibility = if (ad.icon == null) GONE else VISIBLE
+        // En el mini, sin icono (es opcional): en una ventana angosta el titulo
+        // quedaba en "Anunci…".
+        icono.visibility = if (mini || ad.icon == null) GONE else VISIBLE
         accion.text = ad.callToAction
         accion.visibility = if (ad.callToAction.isNullOrBlank()) GONE else VISIBLE
         raiz.setNativeAd(ad)

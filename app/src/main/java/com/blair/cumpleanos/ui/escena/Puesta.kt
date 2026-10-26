@@ -30,6 +30,9 @@ fun VelitaEnEscenario(
     llamaViva: Boolean = true,
     escala: () -> Float = { 1f },
     encendidoLlama: () -> Float = { 1f },
+    /** Grados de balanceo, pivotando en los pies. */
+    balanceo: () -> Float = { 0f },
+    senal: () -> Float = { 0f },
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val ancho = minOf(maxWidth * 0.44f, 210.dp)
@@ -42,6 +45,7 @@ fun VelitaEnEscenario(
                     val e = escala()
                     scaleX = e
                     scaleY = e
+                    rotationZ = balanceo()
                     transformOrigin = TransformOrigin(0.5f, PIE_VELITA_U / ALTO_CON_REFLEJO_U)
                 },
         ) {
@@ -51,6 +55,7 @@ fun VelitaEnEscenario(
                 reflejo = true,
                 llamaViva = llamaViva,
                 encendidoLlama = encendidoLlama,
+                senal = senal,
             )
         }
     }

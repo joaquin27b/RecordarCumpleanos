@@ -34,7 +34,7 @@ object Emisor {
      *
      * Sin botones de accion: tocarla abre la app.
      */
-    fun cumple(ctx: Context, personaId: Long, nombre: String, fechaDia: Int, diasRestantes: Int, edad: Int?) {
+    fun cumple(ctx: Context, personaId: Long, nombre: String, fechaDia: Int, diasRestantes: Int, edad: Int?, mudo: Boolean = false) {
         val loc: Locale = ctx.resources.configuration.locales[0]
         val res = ctx.resources
         val texto = when {
@@ -44,22 +44,22 @@ object Emisor {
             diasRestantes == 1 -> ctx.getString(R.string.notif_cumple_manana, nombre, fechaLarga(fechaDia, loc))
             else -> res.getQuantityString(R.plurals.notif_cumple_en, diasRestantes, nombre, diasRestantes, fechaLarga(fechaDia, loc))
         }
-        emitir(ctx, personaId.toInt(), CANAL_CUMPLE, nombre, texto, NotificationCompat.PRIORITY_HIGH)
+        emitir(ctx, personaId.toInt(), CANAL_CUMPLE, nombre, texto, NotificationCompat.PRIORITY_HIGH, mudo)
     }
 
     /** "festeja MAÑANA" el dia anterior, "festeja HOY" el dia del festejo. */
-    fun festejo(ctx: Context, personaId: Long, nombre: String, fechaFestejoDia: Int, diasRestantes: Int) {
+    fun festejo(ctx: Context, personaId: Long, nombre: String, fechaFestejoDia: Int, diasRestantes: Int, mudo: Boolean = false) {
         val loc: Locale = ctx.resources.configuration.locales[0]
         val texto = if (diasRestantes == 0) ctx.getString(R.string.notif_festeja_hoy, nombre)
         else ctx.getString(R.string.notif_festeja_manana, nombre, fechaConDia(fechaFestejoDia, loc))
-        emitir(ctx, BASE_ID_FESTEJO + personaId.toInt(), CANAL_CUMPLE, nombre, texto, NotificationCompat.PRIORITY_HIGH)
+        emitir(ctx, BASE_ID_FESTEJO + personaId.toInt(), CANAL_CUMPLE, nombre, texto, NotificationCompat.PRIORITY_HIGH, mudo)
     }
 
     /** "¿Fuiste al festejo de Patry?". Tocarla abre la app con la tarjeta arriba. */
-    fun asistencia(ctx: Context, personaId: Long, cumpleId: Long, nombre: String) {
+    fun asistencia(ctx: Context, personaId: Long, cumpleId: Long, nombre: String, mudo: Boolean = false) {
         emitir(
             ctx, BASE_ID_ASISTENCIA + personaId.toInt(), CANAL_CUMPLE, nombre,
-            ctx.getString(R.string.asistencia_pregunta, nombre), NotificationCompat.PRIORITY_HIGH,
+            ctx.getString(R.string.asistencia_pregunta, nombre), NotificationCompat.PRIORITY_HIGH, mudo,
         ) { putExtra(EXTRA_ASISTENCIA, cumpleId) }
     }
 
@@ -69,6 +69,7 @@ object Emisor {
 
     private fun emitir(
         ctx: Context, id: Int, canal: String, titulo: String, texto: String, prioridad: Int,
+        mudo: Boolean = false,
         extras: Intent.() -> Unit = {},
     ) {
         val abrir = PendingIntent.getActivity(
@@ -87,6 +88,10 @@ object Emisor {
             .setPriority(prioridad)
             .setContentIntent(abrir)
             .setAutoCancel(true)
+            // De madrugada sin sonido: queda en la pantalla de bloqueo para cuando se desbloquea.
+            .setSilent(mudo)
+            // Un nombre y una fecha: se puede leer con el telefono bloqueado.
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
         try {
             NotificationManagerCompat.from(ctx).notify(id, n)

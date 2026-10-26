@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Recordar Cumpleaños</string>
 
     <string name="sec_proximos">Próximos cumpleaños</string>
     <string name="sec_hoy">Hoy</string>
@@ -94,7 +93,6 @@
         <item quantity="other">Sin saludar · hace %d días</item>
     </plurals>
     <string name="festejo_saludado">¡Saludado!</string>
-    <string name="vacio_cuerpo">Cargá el primero y te aviso cuando llegue el día.</string>
     <string name="desc_anterior">Anterior</string>
     <string name="desc_siguiente">Siguiente</string>
     <plurals name="alta_preaviso_dias">
@@ -162,4 +160,19 @@
     <string name="asistencia_chip_si">Sí</string>
     <string name="asistencia_chip_no">No</string>
     <string name="anuncio_etiqueta">Anuncio</string>
+
+    <!-- Fecha del saludo, editable desde el historial -->
+    <string name="saludo_fecha_etiqueta">Saludado el %1$s</string>
+    <string name="saludo_fecha_titulo">¿Qué día saludaste?</string>
+    <string name="saludo_fecha_futura">Esa fecha todavía no llegó: el saludo ya ocurrió.</string>
+    <string name="saludo_fecha_choque">Ese día ya tenés otro saludo a %1$s. Elegí otra fecha.</string>
+    <string name="saludo_fecha_cambiar">Cambiar la fecha del saludo</string>
+
+
+    <!-- Sin cumpleaños: Velita al lado del boton -->
+    <string name="mascota_globo">¡AGREGÁ ESE CUMPLEAÑOS\nQUE NO QUERÉS OLVIDAR!</string>
+    <string name="per_vacio">Todavía no agregaste a nadie</string>
+    <string name="hist_eliminar_saludo">Eliminar este saludo</string>
+    <string name="hist_eliminar_saludo_titulo">¿Eliminar este saludo?</string>
+    <string name="hist_eliminar_saludo_cuerpo">Se borra del historial. El cumpleaños no vuelve a quedar como no saludado.</string>
 </resources>
