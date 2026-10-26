@@ -23,6 +23,9 @@ private const val BASE_ID_FESTEJO = 1 shl 30
 /** La pregunta de asistencia, en un tercer espacio: no pisa ni al cumple ni al festejo. */
 private const val BASE_ID_ASISTENCIA = 3 shl 29
 
+/** "¿Saludaste a X ayer?", en un cuarto espacio: un preaviso de la misma persona no la pisa. */
+private const val BASE_ID_PREGUNTA = 1 shl 29
+
 /** cumpleId de la pregunta de asistencia que abre la app al tocar la notificacion. */
 const val EXTRA_ASISTENCIA = "asistencia"
 
@@ -87,12 +90,12 @@ object Emisor {
 
     /**
      * "¿Saludaste a Patry ayer?", el dia despues del cumple si sigue sin marcar.
-     * Mismo id que el aviso del cumple: lo reemplaza. YA SALUDÉ y NO SALUDÉ abren
+     * Id propio: un preaviso de otra ocurrencia de la persona no la pisa. YA SALUDÉ y NO SALUDÉ abren
      * la app en la hoja que corresponde (la del regalo o la de la excusa).
      */
     fun preguntaSaludo(ctx: Context, personaId: Long, cumpleId: Long, nombre: String, mudo: Boolean = false) {
         emitir(
-            ctx, personaId.toInt(), CANAL_CUMPLE, nombre,
+            ctx, BASE_ID_PREGUNTA + personaId.toInt(), CANAL_CUMPLE, nombre,
             ctx.getString(R.string.notif_pregunta_saludo, nombre), NotificationCompat.PRIORITY_HIGH, mudo,
             acciones = listOf(
                 Accion.YA_SALUDE to ctx.getString(R.string.notif_accion_ya_salude),

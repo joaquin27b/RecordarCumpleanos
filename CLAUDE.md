@@ -138,7 +138,8 @@ Fechas como epochDay `Int` en todo el dominio.
   tarjeta arriba (extra `asistencia` = cumpleId). En la app, UNA tarjeta, la más
   reciente; mostrarla anota el día y ya no se notifica.
 - Espacios de ids de notificación: cumple = personaId, festejo = `1 shl 30` +
-  personaId, asistencia = `3 shl 29` + personaId, resumen = `Int.MAX_VALUE`. Todo en
+  personaId, asistencia = `3 shl 29` + personaId, pregunta del día siguiente =
+  `1 shl 29` + personaId, resumen = `Int.MAX_VALUE`. Todo en
   el canal `cumple_v1` salvo el resumen.
 
 ## Diseño
