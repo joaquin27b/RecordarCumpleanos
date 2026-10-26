@@ -76,7 +76,7 @@ por encima del MAYOR de esta tabla y agregar la fila nueva.
 | 5 | 1.2.0 | v3 | `v1.2.0-vc5` | en closed testing; solicitud de acceso a Producción enviada 2026-10-20 14:08 (respuesta por mail, ≤7 días) |
 | 6 | 1.2.1 | v3 | ver git log | AAB generado 2026-10-20, sin subir (nativos mini en alta y entre secciones; buscador de personas; línea bajo los títulos; imePadding del alta; halo del FAB fuera del banner) |
 | 7 | 1.2.2 | v3 | ver git log | AAB generado 2026-10-21 (nativos: media topeado y apaisado, compacto de alto fijo, regla de densidad, no se recargan al girar) |
-| 8 | 1.3.0 | v3 | ver git log | AAB generado 2026-10-26 (nombre de marca en todos los idiomas; Velita con globo sin cumpleaños; editar fecha y eliminar un saludo; permisos directos; aviso a las 00:05; nativos mini en ventanas, mediano al final con su unidad, CTA apagado) |
+| 8 | 1.3.0 | v4 | ver git log | AAB generado 2026-10-26 (marca en todos los idiomas; Velita con globo sin cumpleaños; contadores ESTE MES / ESTE AÑO; No saludé y excusa del festejo (schema v4, MigracionTest OK 11/11); editar fecha y eliminar un saludo; avisos 00:05 y del día siguiente con botones; nativos mini en ventanas y mediano al final; sin permiso de batería) |
 
 **Próxima tanda: versionCode 9.** Mientras la solicitud de Producción está en
 revisión **no se sube nada al track de closed testing** (un release nuevo puede
