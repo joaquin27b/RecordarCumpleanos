@@ -58,8 +58,6 @@ fun AltaPantalla(
         nombre: String, dia: Int, mes: Int, anioNacimiento: Int?, preavisos: String?, regaloPlan: String?, festejo: Int?,
     ) -> Unit,
     onCancelar: () -> Unit,
-    /** False con la app sin datos: la primera vez no hay mas anuncio que el banner. */
-    conAnuncio: Boolean,
     modifier: Modifier = Modifier,
 ) {
     BackHandler { onCancelar() }
@@ -78,7 +76,8 @@ fun AltaPantalla(
     val validacion = validarAnio(if (sinAnio) "" else anioTexto, dia, mes, hoy)
     // Al final del contenido, debajo de Guardar: con el teclado abierto la
     // columna scrollea hasta el anuncio entero.
-    val nativo = if (conAnuncio) nativoEn(LugarNativo.ALTA) else null
+    // Va siempre, con datos o sin: aca el usuario esta detenido.
+    val nativo = nativoEn(LugarNativo.ALTA)
 
     Column(
         modifier
@@ -151,7 +150,7 @@ fun AltaPantalla(
         }
         nativo?.let {
             Spacer(Modifier.height(16.dp))
-            TarjetaNativo(it, tamano = LugarNativo.ALTA.tamano)
+            TarjetaNativo(it, LugarNativo.ALTA.tamano)
         }
         Spacer(Modifier.height(96.dp))
     }

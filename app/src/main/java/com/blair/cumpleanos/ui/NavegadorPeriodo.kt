@@ -182,7 +182,7 @@ private fun HojaPeriodo(
                 }
                 nativo?.let {
                     Spacer(Modifier.height(6.dp))
-                    TarjetaNativo(it)
+                    TarjetaNativo(it, LugarNativo.HOJA.tamano)
                 }
                 Spacer(Modifier.height(20.dp))
             }

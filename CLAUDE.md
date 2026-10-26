@@ -71,8 +71,9 @@ por encima del MAYOR de esta tabla y agregar la fila nueva.
 | 4 | 1.2.0 | v2 | b3c2859 (solo buscador) | **usado en Play**: no reutilizar |
 | 5 | 1.2.0 | v3 | `v1.2.0-vc5` | en closed testing; solicitud de acceso a Producción enviada 2026-10-20 14:08 (respuesta por mail, ≤7 días) |
 | 6 | 1.2.1 | v3 | ver git log | AAB generado 2026-10-20, sin subir (nativos mini en alta y entre secciones; buscador de personas; línea bajo los títulos; imePadding del alta; halo del FAB fuera del banner) |
+| 7 | 1.2.2 | v3 | ver git log | AAB generado 2026-10-21 (nativos: media topeado y apaisado, compacto de alto fijo, regla de densidad, no se recargan al girar) |
 
-**Próxima tanda: versionCode 7.** Mientras la solicitud de Producción está en
+**Próxima tanda: versionCode 8.** Mientras la solicitud de Producción está en
 revisión **no se sube nada al track de closed testing** (un release nuevo puede
 reiniciar o complicar la evaluación): lo que se termine queda commiteado y
 pusheado a git, sin AAB subido.
@@ -142,26 +143,33 @@ App ID en el manifiesto por `manifestPlaceholders["adAppId"]` (release
   se recrea al navegar ni al abrir hojas. **Nunca** `loadAd()` por acción del usuario:
   es invalid traffic y suspende la cuenta entera. El refresco (60 s) se configura en
   el panel de AdMob, no en el código.
-- **Nativos** (`ui/AnuncioNativo.kt`, `CoordinadorNativos` con scope de pantalla):
-  - **Alta y hojas**: uno solo, el de mayor prioridad (1 AltaPantalla mini, 2 hoja
-    abierta grande), pedido UNA vez al abrir, `destroy()` al cerrar.
-  - **Lista**: 3 debajo de la tarjeta de asistencia, 4 entre ESTE AÑO y PRÓXIMO AÑO,
-    5 antes de PERSONAS, 6 antes de HISTORIAL y 7 al final, todos mini. El del
-    final probó mediano y el validador marcó "asset views outside": quedó mini. Cada uno se pide la primera vez que su fila ancla queda en
-    pantalla al detenerse el scroll (`LugaresEnPantalla`) y desde ahí queda FIJO:
-    puede haber dos visibles a la vez (decidido por el usuario el 2026-10-20). La
-    regla de "uno solo visible" en la lista hacía temblar el final y el validador
-    marcaba "asset views outside" al sacar un anuncio ya mostrado.
+- **Nativos** (`ui/AnuncioNativo.kt`, `CoordinadorNativos` en `NativosViewModel`:
+  sobrevive a la rotación, girar no pide otro):
+  - **Dos tamaños.** COMPACTO (lista y hojas): fila de alto fijo 64dp con etiqueta,
+    ícono, titular (2 líneas con "…"), anunciante (1 línea) y CTA, sin media.
+    COMPLETO (solo AltaPantalla): con media topeado a 180dp (mínimo AdMob 120dp),
+    cuerpo a 2 líneas. Se pide `NATIVE_MEDIA_ASPECT_RATIO_LANDSCAPE`.
+  - **Por qué**: en debug el nativo de prueba siempre es apaisado y corto. En
+    release el inventario real trae media vertical y titulares largos: sin tope, una
+    creatividad 9:16 medía ~590dp. Se reproduce en `TamanoNativoTest`, no en el teléfono.
+  - **Alta y hojas**: uno solo, el de mayor prioridad (1 alta, 2 hoja), pedido UNA vez
+    al abrir, `destroy()` al cerrar. El del alta va siempre, aun sin datos.
+  - **Lista — regla de densidad** (`ui/DensidadNativos.kt`, `ubicarNativos`): se
+    cuentan filas de datos (cumpleaños y personas; ni encabezados, ni anuncios, ni
+    historial). 0 filas: ninguno. 1–5: uno al final de todo. 6+: uno tras la primera
+    sección con datos y los siguientes solo con 6 filas desde el anterior (nunca dos
+    en pantalla; dos secciones cortas comparten uno). Secciones: pasados, este año,
+    próximo año, personas, historial.
+  - Los turnos LISTA_1..4 se anotan siempre (con datos) y cada uno se pide la primera
+    vez que su ancla (la fila que le sigue) queda en pantalla al detenerse el scroll
+    (`LugaresEnPantalla`). El turno conserva su anuncio aunque se corra de lugar:
+    agregar una persona no pide otro.
   - Con una hoja o el alta encima, los de la lista quedan invisibles en su lugar
-    (`alpha 0`, sin correr nada) y vuelven los mismos al cerrar. Se anotan en
-    `Contenido` (MainActivity), fuera del `if (enAlta)`.
-  - Con la app sin datos (primera vez) no hay ningún nativo, ni en el alta: solo el banner.
-  - Mini = una fila chata: etiqueta, ícono, título (hasta 2 líneas) y CTA, sin media.
-  - Sin animación de entrada. Validado con el AdMob native ad validator.
+    (`alpha 0`, sin correr nada) y vuelven los mismos al cerrar.
+  - Sin animación de entrada.
   Siempre en su propia tarjeta (nunca dentro de una tarjeta de la app), con etiqueta
   "Anuncio" y CTA gris neutro (nunca cian, degradé, dorado ni rojo). Van ENTRE
-  secciones, en lugares fijos; nada de intercalados cada N filas ni dentro de la
-  tarjeta de PERSONAS: es "ad mimicking app content".
+  secciones; nada dentro de la tarjeta de PERSONAS: es "ad mimicking app content".
   Sin anuncio no se dibuja la tarjeta: sin hueco reservado.
 
 ## Errores que ya cometimos

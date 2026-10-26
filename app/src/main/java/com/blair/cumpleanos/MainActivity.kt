@@ -205,17 +205,13 @@ class MainActivity : ComponentActivity() {
         // FUERA del if (enAlta) y de la LazyColumn: con el alta abierta la lista sale
         // de composicion pero sus lugares siguen anotados, asi el coordinador los
         // PAUSA (ALTA gana) en vez de destruirlos y pedir otros al volver.
-        // App sin datos: ni estos ni el del alta. La primera vez, solo el banner.
+        // App sin datos: ninguno en la lista, solo el banner. El del alta va siempre.
         val listaVacia = esVacio(pasados, proximos, personas) && conHistorial.isEmpty()
-        // Anotados no es pedidos: de estos se pide solo el que esta en pantalla.
+        // Anotados no es pedidos: se pide solo el turno que ubicarNativos puso y
+        // que esta en pantalla. Anotarlos todos fijos hace que un turno que se corre
+        // o desaparece y vuelve conserve su anuncio en vez de pedir otro.
         val nativosLista = buildMap {
-            if (!listaVacia) {
-                if (asistencia != null) put(LugarNativo.ASISTENCIA, nativoEn(LugarNativo.ASISTENCIA))
-                put(LugarNativo.ESTE_ANIO, nativoEn(LugarNativo.ESTE_ANIO))
-                put(LugarNativo.PERSONAS, nativoEn(LugarNativo.PERSONAS))
-                put(LugarNativo.HISTORIAL, nativoEn(LugarNativo.HISTORIAL))
-                put(LugarNativo.FINAL, nativoEn(LugarNativo.FINAL))
-            }
+            if (!listaVacia) LugarNativo.entries.filter { it.enLista }.forEach { put(it, nativoEn(it)) }
         }
 
         Scaffold(
@@ -246,7 +242,6 @@ class MainActivity : ComponentActivity() {
                         onAlta(false)
                     },
                     onCancelar = { onAlta(false) },
-                    conAnuncio = !listaVacia,
                     // consumeWindowInsets: el imePadding del alta descuenta lo que
                     // ya resto el Scaffold (banner y barra) y no suma el doble.
                     modifier = Modifier

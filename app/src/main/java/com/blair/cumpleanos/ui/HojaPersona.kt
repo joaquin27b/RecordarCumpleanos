@@ -186,7 +186,7 @@ fun HojaPersona(
                 }
                 nativo?.let {
                     Spacer(Modifier.height(12.dp))
-                    TarjetaNativo(it)
+                    TarjetaNativo(it, LugarNativo.HOJA.tamano)
                 }
                 Spacer(Modifier.height(24.dp))
             }

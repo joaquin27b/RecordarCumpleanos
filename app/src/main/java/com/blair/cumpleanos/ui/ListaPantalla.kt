@@ -132,6 +132,8 @@ private sealed interface Item {
     data class Historial(val lista: List<CumpleUi>) : Item { override val clave = "histLista" }
     data class Vacio(val texto: Int, override val clave: String) : Item
     data object Pie : Item { override val clave = "pie" }
+    /** Donde toca un nativo segun [ubicarNativos]; no se dibuja: se cambia por [Nativo] o se saca. */
+    data class Lugar(val lugar: LugarNativo) : Item { override val clave = "lugar" + lugar.name }
     /** Clave estable por lugar: Compose no lo trata como fila nueva. El anuncio vive afuera. */
     data class Nativo(val lugar: LugarNativo, val anuncio: NativeAd) : Item { override val clave = "nativo" + lugar.name }
 }
@@ -199,35 +201,44 @@ fun ListaPantalla(
         return
     }
 
-    val items = buildList {
-        fun nativo(lugar: LugarNativo) = nativos[lugar]?.let { add(Item.Nativo(lugar, it)) }
+    // Secciones para la regla de densidad: pasados, este año, proximo año,
+    // personas e historial. El historial no suma filas: es una caja de alto fijo.
+    val inicioProximoAnio = proximos.indexOfFirst { it is FilaLista.Encabezado && !it.esteAnio }
+        .let { if (it < 0) proximos.size else it }
+    val filasEsteAnio = proximos.subList(0, inicioProximoAnio).count { it is FilaLista.Dato }
+    val filasProximoAnio = proximos.count { it is FilaLista.Dato } - filasEsteAnio
+    val turnos = LugarNativo.entries.filter { it.enLista }
+    val trasSeccion = ubicarNativos(
+        listOf(pasados.size, filasEsteAnio, filasProximoAnio, personas.size, 0),
+        maximo = turnos.size,
+    ).zip(turnos).toMap()
+
+    val crudos = buildList {
+        fun lugar(seccion: Int) = trasSeccion[seccion]?.let { add(Item.Lugar(it)) }
         add(Item.Cabecera)
-        asistencia?.let {
-            add(Item.Asistencia(it))
-            nativo(LugarNativo.ASISTENCIA)
-        }
+        asistencia?.let { add(Item.Asistencia(it)) }
         if (pasados.isNotEmpty()) {
             add(Item.Seccion(R.string.sec_pasados, RojoCta, "secPasados"))
             pasados.forEach { add(Item.Cumple(it)) }
         }
+        lugar(0)
         add(Item.Seccion(R.string.sec_proximos, CianNeon, "secProximos"))
         if (proximos.isEmpty()) add(Item.Vacio(R.string.lista_vacia, "vacioProximos"))
-        proximos.forEach { f ->
+        proximos.forEachIndexed { i, f ->
+            if (i == inicioProximoAnio) lugar(1)
             when (f) {
-                is FilaLista.Encabezado -> {
-                    if (!f.esteAnio) nativo(LugarNativo.ESTE_ANIO)
-                    add(Item.Grupo(f))
-                }
+                is FilaLista.Encabezado -> add(Item.Grupo(f))
                 is FilaLista.Dato -> add(Item.Cumple(f.fila))
             }
         }
+        if (inicioProximoAnio == proximos.size) lugar(1)
+        lugar(2)
         if (personas.isNotEmpty()) {
-            nativo(LugarNativo.PERSONAS)
             add(Item.Seccion(R.string.sec_personas, Dorado, "secPersonas"))
             add(Item.BuscadorPersonas)
             add(if (personasVistas.isEmpty()) Item.PersonasSinResultados(buscaPersona.trim()) else Item.Personas(personasVistas))
         }
-        nativo(LugarNativo.HISTORIAL)
+        lugar(3)
         add(Item.Seccion(R.string.sec_historial, CianNeon, "secHistorial"))
         add(Item.Buscador)
         // Buscando, el rango no aplica: sus controles mentirian.
@@ -235,18 +246,24 @@ fun ListaPantalla(
         // "No hay saludos" y "nadie se llama asi" son cosas distintas.
         if (historial.isEmpty()) add(if (buscando) Item.SinResultados else Item.Vacio(R.string.hist_vacio, "vacioHist"))
         else add(Item.Historial(historial))
-        nativo(LugarNativo.FINAL)
+        lugar(4)
         add(Item.Pie)
     }
-    // El ancla de cada lugar es la fila junto a la que va su anuncio: existe
-    // aunque el anuncio todavia no, y por ella se sabe si el lugar esta a la vista.
-    val anclas = buildMap<Any, LugarNativo> {
-        asistencia?.let { put("asist" + it.id, LugarNativo.ASISTENCIA) }
-        proximos.firstOrNull { it is FilaLista.Encabezado && !it.esteAnio }
-            ?.let { put("g" + (it as FilaLista.Encabezado).anio, LugarNativo.ESTE_ANIO) }
-        if (personas.isNotEmpty()) put("secPersonas", LugarNativo.PERSONAS)
-        put("secHistorial", LugarNativo.HISTORIAL)
-        put("pie", LugarNativo.FINAL)
+    // El ancla de cada lugar es la fila que le sigue: existe aunque el anuncio
+    // todavia no, y por ella se sabe si el lugar esta a la vista.
+    val anclas = mutableMapOf<Any, LugarNativo>()
+    val items = buildList {
+        var pendiente: LugarNativo? = null
+        crudos.forEach { item ->
+            if (item is Item.Lugar) {
+                pendiente = item.lugar
+                nativos[item.lugar]?.let { add(Item.Nativo(item.lugar, it)) }
+            } else {
+                pendiente?.let { anclas[item.clave] = it }
+                pendiente = null
+                add(item)
+            }
+        }
     }
 
     val vistos = remember { mutableSetOf<Any>() }
@@ -274,11 +291,13 @@ fun ListaPantalla(
                 // Tapada por una hoja, invisible pero en su lugar: nada se corre.
                 is Item.Nativo -> TarjetaNativo(
                     item.anuncio,
+                    item.lugar.tamano,
                     Modifier
                         .padding(vertical = 4.dp)
                         .alpha(if (tapada) 0f else 1f),
-                    item.lugar.tamano,
                 )
+                // Nunca llega: se reemplaza antes de armar la lista.
+                is Item.Lugar -> Unit
                 is Item.Seccion -> EncabezadoSeccion(
                     stringResource(item.texto) + if (item.clave == "secPersonas") " (${personas.size})" else "",
                     item.color,

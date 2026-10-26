@@ -1,8 +1,10 @@
 package com.blair.cumpleanos.ui
 
+import android.app.Application
 import android.content.Context
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.text.TextUtils
 import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
@@ -13,6 +15,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,16 +28,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.blair.cumpleanos.BuildConfig
 import com.blair.cumpleanos.R
 import com.blair.cumpleanos.ui.theme.BlancoEscena
@@ -60,46 +63,41 @@ private const val TAG = "Nativo"
  * Donde puede ir un nativo. ALTA y HOJA tapan la lista: de esos se muestra uno
  * solo, el de mayor prioridad (1 gana).
  *
- * Los [enLista] no compiten: cada uno se pide la primera vez que su lugar queda
- * en pantalla y desde ahi queda FIJO. Sacar y poner anuncios al scrollear corria
- * el contenido (temblaba) y el validador de AdMob marcaba la vista que se iba.
+ * Los [enLista] son turnos, no lugares fijos: [ubicarNativos] decide despues de
+ * que seccion va cada uno segun cuantas filas hay. Cada turno se pide la primera
+ * vez que su ancla queda en pantalla y desde ahi conserva su anuncio aunque la
+ * lista cambie y el turno se corra: cargar una persona no pide otro.
  */
 enum class LugarNativo(val prioridad: Int, val tamano: TamanoNativo, val enLista: Boolean = false) {
     /** AltaPantalla, debajo de Guardar. Tapa la lista entera: gana a todos. */
-    ALTA(1, TamanoNativo.MINI),
+    ALTA(1, TamanoNativo.COMPLETO),
 
     /** Al pie de una hoja abierta: persona, regalo, periodo. Tapa la lista. */
-    HOJA(2, TamanoNativo.GRANDE),
+    HOJA(2, TamanoNativo.COMPACTO),
 
-    /** Debajo de la tarjeta de asistencia, afuera de ella. */
-    ASISTENCIA(3, TamanoNativo.MINI, enLista = true),
-
-    /** Entre los cumpleaños de este año y los del proximo. */
-    ESTE_ANIO(4, TamanoNativo.MINI, enLista = true),
-
-    /** Justo antes de la seccion PERSONAS. */
-    PERSONAS(5, TamanoNativo.MINI, enLista = true),
-
-    /** Justo antes de la seccion HISTORIAL. */
-    HISTORIAL(6, TamanoNativo.MINI, enLista = true),
-
-    /** Al final de todo, debajo del historial. */
-    FINAL(7, TamanoNativo.MINI, enLista = true),
+    LISTA_1(3, TamanoNativo.COMPACTO, enLista = true),
+    LISTA_2(4, TamanoNativo.COMPACTO, enLista = true),
+    LISTA_3(5, TamanoNativo.COMPACTO, enLista = true),
+    LISTA_4(6, TamanoNativo.COMPACTO, enLista = true),
 }
 
 enum class TamanoNativo {
-    /** Una fila chata: icono, etiqueta, titulo y CTA. Sin media. */
-    MINI,
+    /** Una fila de alto fijo: etiqueta, icono, titulo, anunciante y CTA. Sin media. */
+    COMPACTO,
 
-    /** Como el grande, con el media topeado a 140dp. */
-    MEDIANO,
-
-    /** Con el media a su aspecto. */
-    GRANDE,
+    /** Con media, topeado a [ALTO_MAX_MEDIA_DP]. Solo en el alta. */
+    COMPLETO,
 }
 
+/** Tope del media del completo: una creatividad vertical real ocupaba media pantalla. */
+private const val ALTO_MAX_MEDIA_DP = 180
+
+/** Alto fijo de la fila del compacto: dos lineas de titulo y una de anunciante. */
+internal const val ALTO_COMPACTO_DP = 64
+
 /**
- * Coordinador con scope de pantalla. Cada lugar se anota mientras esta en
+ * Coordinador con scope de ViewModel: girar el telefono recrea la actividad pero
+ * no los anuncios, y no se vuelve a pedir nada. Cada lugar se anota mientras esta en
  * composicion. De ALTA y HOJA solo se pide el activo; los de la lista, al verse.
  *
  * El NativeAd vive ACA, no en la fila de la LazyColumn: la fila solo lo dibuja.
@@ -139,13 +137,15 @@ class CoordinadorNativos(private val ctx: Context, private val pedir: Boolean) {
         anotados[lugar] = (anotados[lugar] ?: 0) + 1
     }
 
-    fun soltar(lugar: LugarNativo) {
+    /** [destruir] false al girar: la actividad nueva lo vuelve a anotar y usa el mismo anuncio. */
+    fun soltar(lugar: LugarNativo, destruir: Boolean = true) {
         val quedan = (anotados[lugar] ?: 0) - 1
         if (quedan > 0) {
             anotados[lugar] = quedan
             return
         }
         anotados.remove(lugar)
+        if (!destruir) return
         fallidos.remove(lugar)
         anuncios.remove(lugar)?.let {
             Log.i(TAG, "destroy lugar=$lugar")
@@ -179,6 +179,9 @@ class CoordinadorNativos(private val ctx: Context, private val pedir: Boolean) {
             .withNativeAdOptions(
                 NativeAdOptions.Builder()
                     .setAdChoicesPlacement(NativeAdOptions.ADCHOICES_TOP_RIGHT)
+                    // Sin esto llega cualquier formato, vertical incluido: el test de
+                    // Google siempre es apaisado y en debug nunca se veia.
+                    .setMediaAspectRatio(NativeAdOptions.NATIVE_MEDIA_ASPECT_RATIO_LANDSCAPE)
                     .build()
             )
             .build()
@@ -190,6 +193,13 @@ class CoordinadorNativos(private val ctx: Context, private val pedir: Boolean) {
         anuncios.clear()
         anotados.clear()
     }
+}
+
+/** Dueño del coordinador: sobrevive a la rotacion y destruye todo al cerrar la app. */
+class NativosViewModel(app: Application) : AndroidViewModel(app) {
+    val coordinador = CoordinadorNativos(app, BuildConfig.PEDIR_ANUNCIO)
+
+    override fun onCleared() = coordinador.destruirTodo()
 }
 
 private val LocalNativos = staticCompositionLocalOf<CoordinadorNativos?> { null }
@@ -221,11 +231,10 @@ fun LugaresEnPantalla(estado: LazyListState, anclas: Map<Any, LugarNativo>) {
 @Composable
 fun listaTapada(): Boolean = LocalNativos.current?.listaTapada ?: false
 
-/** Una pantalla con su coordinador. Al salir de composicion se destruye todo lo que tenga. */
+/** Una pantalla con el coordinador de la actividad. Cada lugar se destruye al soltarse. */
 @Composable
 fun PantallaConNativos(contenido: @Composable () -> Unit) {
-    val ctx = LocalContext.current
-    val coordinador = remember { CoordinadorNativos(ctx, BuildConfig.PEDIR_ANUNCIO) }
+    val coordinador = viewModel<NativosViewModel>().coordinador
     LaunchedEffect(coordinador) {
         // Un lugar que se pasa de largo al scrollear rapido no llega a pedir.
         snapshotFlow { coordinador.activo }.collectLatest {
@@ -233,7 +242,6 @@ fun PantallaConNativos(contenido: @Composable () -> Unit) {
             coordinador.pedirSiHaceFalta()
         }
     }
-    DisposableEffect(coordinador) { onDispose { coordinador.destruirTodo() } }
     CompositionLocalProvider(LocalNativos provides coordinador) { contenido() }
 }
 
@@ -245,15 +253,17 @@ fun PantallaConNativos(contenido: @Composable () -> Unit) {
 @Composable
 fun nativoEn(lugar: LugarNativo): NativeAd? {
     val coordinador = LocalNativos.current ?: return null
+    val actividad = LocalActivity.current
     DisposableEffect(coordinador, lugar) {
         coordinador.anotar(lugar)
-        onDispose { coordinador.soltar(lugar) }
+        // Al girar, la composicion se va pero el anuncio queda para la actividad nueva.
+        onDispose { coordinador.soltar(lugar, destruir = actividad?.isChangingConfigurations != true) }
     }
     return coordinador.anuncio(lugar)
 }
 
 /** Colores del tema pasados a la vista clasica. */
-private data class ColoresNativo(
+internal data class ColoresNativo(
     val texto: Int,
     val mutado: Int,
     val etiqueta: Int,
@@ -269,11 +279,12 @@ private const val TINTA_CTA = 0xFF1E1E22.toInt()
  * El nativo en su propia tarjeta, con el lenguaje de la app: esquinas de 24dp,
  * violeta translucido, borde de 1dp y el padding de las tarjetas de cumpleaños.
  * Sin halo ni neon: no se confunde con un cumpleaños. Etiqueta "Anuncio" arriba
- * a la izquierda, AdChoices arriba a la derecha. Alto libre: lo da el anuncio.
+ * a la izquierda, AdChoices arriba a la derecha. El alto tiene tope en los dos
+ * tamaños: un titular largo o un media vertical no estiran la tarjeta.
  * Solo se llama con un anuncio cargado: sin anuncio no hay tarjeta ni hueco.
  */
 @Composable
-fun TarjetaNativo(anuncio: NativeAd, modifier: Modifier = Modifier, tamano: TamanoNativo = TamanoNativo.GRANDE) {
+fun TarjetaNativo(anuncio: NativeAd, tamano: TamanoNativo, modifier: Modifier = Modifier) {
     val colores = ColoresNativo(
         texto = BlancoEscena.toArgb(),
         mutado = TextoSecundario.toArgb(),
@@ -288,9 +299,9 @@ fun TarjetaNativo(anuncio: NativeAd, modifier: Modifier = Modifier, tamano: Tama
         .clip(forma)
         .background(Escenario1.copy(alpha = 0.55f))
         .border(1.dp, EscenarioBorde.copy(alpha = 0.6f), forma)
-    if (tamano == TamanoNativo.MINI) {
+    if (tamano == TamanoNativo.COMPACTO) {
         AndroidView(
-            factory = { c -> VistaNativoMini(c) },
+            factory = { c -> VistaNativoCompacto(c) },
             update = { it.mostrar(anuncio, colores, etiqueta) },
             onRelease = { it.raiz.destroy() },
             modifier = caja.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -298,7 +309,7 @@ fun TarjetaNativo(anuncio: NativeAd, modifier: Modifier = Modifier, tamano: Tama
         return
     }
     AndroidView(
-        factory = { c -> VistaNativo(c, altoMaxMedia = if (tamano == TamanoNativo.MEDIANO) 140 else null) },
+        factory = { c -> VistaNativo(c, ALTO_MAX_MEDIA_DP) },
         update = { it.mostrar(anuncio, colores, etiqueta) },
         // Libera la VISTA; el NativeAd lo destruye el coordinador.
         onRelease = { it.raiz.destroy() },
@@ -307,28 +318,28 @@ fun TarjetaNativo(anuncio: NativeAd, modifier: Modifier = Modifier, tamano: Tama
 }
 
 /**
- * Mide su hijo con el alto que pide la relacion de aspecto del media: el
- * MediaView viene con cualquiera. Nunca menos de 120dp, el minimo de AdMob.
+ * Mide su hijo con el alto que pide la relacion de aspecto del media, sin pasar
+ * de [altoMaxDp]: el inventario real trae cualquier aspecto, vertical incluido.
+ * Nunca menos de 120dp, el minimo de AdMob.
  */
-private class CajaAspecto(ctx: Context, private val altoMaxDp: Int?) : FrameLayout(ctx) {
+internal class CajaAspecto(ctx: Context, private val altoMaxDp: Int) : FrameLayout(ctx) {
     var aspecto = 0f
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val ancho = MeasureSpec.getSize(widthMeasureSpec)
+        if (ancho == 0) return super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         val densidad = resources.displayMetrics.density
-        val tope = altoMaxDp?.let { (it * densidad).toInt() }
-        // Sin aspecto todavia y sin tope: que el media decida.
-        if (ancho == 0 || (aspecto <= 0f && tope == null)) return super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        val natural = if (aspecto > 0f) (ancho / aspecto).toInt() else Int.MAX_VALUE
+        val tope = (altoMaxDp * densidad).toInt()
+        val natural = if (aspecto > 0f) (ancho / aspecto).toInt() else tope
         val minimo = (120 * densidad).toInt()
         // Con tope, FIT_CENTER achica la imagen entera: no se recorta.
-        val alto = maxOf(minOf(natural, tope ?: Int.MAX_VALUE), minimo)
+        val alto = maxOf(minOf(natural, tope), minimo)
         super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(alto, MeasureSpec.EXACTLY))
     }
 }
 
 /** La NativeAdView armada en codigo, sin layout XML. Adaptada de Por Vencer. */
-private class VistaNativo(ctx: Context, altoMaxMedia: Int?) : LinearLayout(ctx) {
+internal class VistaNativo(ctx: Context, altoMaxMedia: Int) : LinearLayout(ctx) {
     private fun dp(v: Int) = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics,
     ).toInt()
@@ -371,14 +382,23 @@ private class VistaNativo(ctx: Context, altoMaxMedia: Int?) : LinearLayout(ctx) 
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
             typeface = Typeface.DEFAULT_BOLD
             maxLines = 2
+            ellipsize = TextUtils.TruncateAt.END
         }
-        anunciante.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        anunciante.apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+        }
         textos.addView(titulo)
         textos.addView(anunciante)
         fila.addView(textos, LayoutParams(0, WRAP_CONTENT, 1f))
         contenido.addView(fila, LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = dp(10) })
 
-        cuerpo.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+        cuerpo.apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            maxLines = 2
+            ellipsize = TextUtils.TruncateAt.END
+        }
         contenido.addView(cuerpo, LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = dp(8) })
 
         // FIT_CENTER: la imagen entra entera, sin recorte. El alto lo pone CajaAspecto.
@@ -443,14 +463,12 @@ private class VistaNativo(ctx: Context, altoMaxMedia: Int?) : LinearLayout(ctx) 
 }
 
 /**
- * La expresion minima de un nativo, como el "small template" de Google: UNA fila
- * chata con icono, etiqueta "Anuncio", titulo y CTA. Sin media.
- *
- * Nada se corta: todo vive dentro de la NativeAdView y el alto lo pone el
- * contenido (el titulo usa hasta dos lineas antes que truncarse). El CTA deja
+ * El nativo de la lista, como el "small template" de Google: UNA fila de alto
+ * FIJO con etiqueta "Anuncio", icono, titulo (2 lineas con "…"), anunciante
+ * (1 linea) y CTA. Sin media. Un titular largo no estira la tarjeta. El CTA deja
  * libre la esquina de arriba a la derecha, donde el SDK pone AdChoices.
  */
-private class VistaNativoMini(ctx: Context) : LinearLayout(ctx) {
+internal class VistaNativoCompacto(ctx: Context) : LinearLayout(ctx) {
     private fun dp(v: Int) = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics,
     ).toInt()
@@ -459,13 +477,13 @@ private class VistaNativoMini(ctx: Context) : LinearLayout(ctx) {
     private val etiqueta = TextView(ctx)
     private val icono = ImageView(ctx)
     private val titulo = TextView(ctx)
+    private val anunciante = TextView(ctx)
     private val accion = TextView(ctx)
 
     init {
         val fila = LinearLayout(ctx).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(36)
         }
         etiqueta.apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
@@ -479,8 +497,17 @@ private class VistaNativoMini(ctx: Context) : LinearLayout(ctx) {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             typeface = Typeface.DEFAULT_BOLD
             maxLines = 2
+            ellipsize = TextUtils.TruncateAt.END
         }
-        fila.addView(titulo, LayoutParams(0, WRAP_CONTENT, 1f))
+        anunciante.apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+        }
+        val textos = LinearLayout(ctx).apply { orientation = VERTICAL }
+        textos.addView(titulo)
+        textos.addView(anunciante)
+        fila.addView(textos, LayoutParams(0, WRAP_CONTENT, 1f))
         accion.apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             typeface = Typeface.DEFAULT_BOLD
@@ -495,8 +522,9 @@ private class VistaNativoMini(ctx: Context) : LinearLayout(ctx) {
             },
         )
 
-        raiz.addView(fila, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        raiz.addView(fila, FrameLayout.LayoutParams(MATCH_PARENT, dp(ALTO_COMPACTO_DP)))
         raiz.headlineView = titulo
+        raiz.advertiserView = anunciante
         raiz.iconView = icono
         raiz.callToActionView = accion
         addView(raiz, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
@@ -512,6 +540,7 @@ private class VistaNativoMini(ctx: Context) : LinearLayout(ctx) {
             setStroke(dp(1), c.etiqueta)
         }
         titulo.setTextColor(c.texto)
+        anunciante.setTextColor(c.mutado)
         accion.setTextColor(c.textoBoton)
         accion.background = GradientDrawable().apply {
             cornerRadius = dp(15).toFloat()
@@ -522,6 +551,8 @@ private class VistaNativoMini(ctx: Context) : LinearLayout(ctx) {
         actual = ad
 
         titulo.text = ad.headline
+        anunciante.text = ad.advertiser
+        anunciante.visibility = if (ad.advertiser.isNullOrBlank()) GONE else VISIBLE
         icono.setImageDrawable(ad.icon?.drawable)
         icono.visibility = if (ad.icon == null) GONE else VISIBLE
         accion.text = ad.callToAction
