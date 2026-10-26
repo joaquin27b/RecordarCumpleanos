@@ -1,14 +1,11 @@
 package com.blair.cumpleanos
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.net.Uri
 import android.os.Bundle
-import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -138,29 +135,11 @@ class MainActivity : ComponentActivity() {
         if (!ok && notificacionesBloqueadas()) abrirAjustesNotificaciones()
     }
 
-    /** Al volver de la ventana de bateria, permita o no, sigue la de notificaciones. */
-    private val permisoBateria = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        pedirNotificaciones()
-    }
-
     /**
-     * Pide lo que falte, uno tras otro, DIRECTO con la ventana PERMITIR del
-     * sistema (sin cartel previo): bateria y despues notificaciones. Nada de
-     * mandar a Ajustes con pasos: en Ya La Tomé, con usuarios reales, nadie llegaba.
+     * Notificaciones DIRECTO con la ventana PERMITIR del sistema, sin cartel previo.
+     * Nada de mandar a Ajustes con pasos: en Ya La Tomé, con usuarios reales, nadie
+     * llegaba. Bateria no se pide: Play la revisa y la alarma de las 00:05 no la necesita.
      */
-    private fun pedirPermisos() {
-        if (exentaDeBateria()) return pedirNotificaciones()
-        try {
-            @SuppressLint("BatteryLife")
-            val pedido = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                .setData(Uri.fromParts("package", packageName, null))
-            permisoBateria.launch(pedido)
-        } catch (_: ActivityNotFoundException) {
-            // Capa sin la ventana directa: se sigue con notificaciones, no se manda a Ajustes.
-            pedirNotificaciones()
-        }
-    }
-
     private fun pedirNotificaciones() {
         if (notificacionesPermitidas()) return
         pedidoNotifMillis = System.currentTimeMillis()
@@ -195,8 +174,6 @@ class MainActivity : ComponentActivity() {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
-    private fun exentaDeBateria(): Boolean =
-        getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(packageName) == true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Antes de super: el splash del sistema muestra el icono sobre la noche
@@ -288,9 +265,9 @@ class MainActivity : ComponentActivity() {
                         permisosDecididos = true
                         val hoy = LocalDate.now().toEpochDay()
                         val ultimo = app.prefs.getLong(PREF_PERMISOS_DIA, -1L).takeIf { it >= 0 }
-                        if (!debePedirPermisos(exentaDeBateria(), notificacionesPermitidas(), ultimo, hoy)) return@LaunchedEffect
+                        if (!debePedirPermisos(notificacionesPermitidas(), ultimo, hoy)) return@LaunchedEffect
                         app.prefs.edit().putLong(PREF_PERMISOS_DIA, hoy).apply()
-                        pedirPermisos()
+                        pedirNotificaciones()
                     }
                 }
             }

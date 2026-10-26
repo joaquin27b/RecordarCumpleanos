@@ -210,12 +210,11 @@ CUMPLEAÑOS…!" (como Ya La Tomé y Por Vencer). La animación corre con
 
 ## Permisos
 
-`MainActivity`: después del splash, directo con las ventanas del sistema (sin cartel
-previo): batería (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`) y después notificaciones.
-Una vez por día mientras falte algo (`permisos_pedidos_dia` en prefs); con todo
-concedido no pregunta nunca. Si Android bloqueó la ventana de notificaciones, abre
-el interruptor de la app. **Ojo Play**: el permiso de batería es restringido y
-puede pedir declaración.
+`MainActivity`: después del splash, notificaciones directo con la ventana del sistema
+(sin cartel previo). Una vez por día mientras no se permita (`permisos_pedidos_dia`
+en prefs); permitido, no pregunta nunca. Si Android bloqueó la ventana, abre el
+interruptor de la app. **Batería NO** (decisión del usuario 2026-10-26): Play revisa
+`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` y la alarma de las 00:05 no la necesita.
 
 ## Errores que ya cometimos
 
