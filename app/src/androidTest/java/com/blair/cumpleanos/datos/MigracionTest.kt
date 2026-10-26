@@ -70,7 +70,7 @@ class MigracionTest {
     private fun abrirRoom(migracion: Migration): BaseDatos =
         Room.databaseBuilder(ctx, BaseDatos::class.java, NOMBRE)
             .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
-            .addMigrations(migracion, MIGRACION_2_3)
+            .addMigrations(migracion, MIGRACION_2_3, MIGRACION_3_4)
             .build()
 
     /** 4 personas, 3 ocurrencias, 1 saludo con fecha. */
@@ -271,7 +271,7 @@ class MigracionTest {
         }
         val room = Room.databaseBuilder(ctx, BaseDatos::class.java, NOMBRE)
             .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
-            .addMigrations(MIGRACION_1_2, MIGRACION_2_3)
+            .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4)
             .build()
         try {
             val abiertos = runBlocking { room.cumpleDao().abiertosAhora() }
@@ -287,6 +287,49 @@ class MigracionTest {
         } finally {
             room.close()
         }
+    }
+
+    /**
+     * v3 (1.2.x, la que esta en Play) a v4: todo lo cargado sobrevive, saludos,
+     * regalos, festejo y asistencia incluidos, y las tres columnas nuevas vienen en
+     * NULL ("no se salteo", "sin motivo").
+     */
+    @Test fun de3a4ConservaTodoYLasColumnasNuevasVienenEnNull() {
+        helper.createDatabase(NOMBRE, 3).use {
+            sembrarV1(it)
+            it.execSQL(
+                "UPDATE cumple SET regaloPlan = 'Un libro', regaloReal = 'Un vinilo', " +
+                    "fechaFestejoDia = ${d(2026, 3, 21)}, asistio = 0, asistenciaPreguntadaDia = ${d(2026, 3, 22)} WHERE id = 10"
+            )
+        }
+        val db = helper.runMigrationsAndValidate(NOMBRE, 4, true, MIGRACION_3_4)
+        verificarFilas(db, listOf("omitidoDia", "motivoOmitido", "motivoNoAsistio"))
+        db.query("SELECT regaloPlan, regaloReal, fechaFestejoDia, asistio, asistenciaPreguntadaDia FROM cumple WHERE id = 10").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("Un libro", c.getString(0))
+            assertEquals("Un vinilo", c.getString(1))
+            assertEquals(d(2026, 3, 21), c.intONull("fechaFestejoDia"))
+            assertEquals(0, c.intONull("asistio"))
+            assertEquals(d(2026, 3, 22), c.intONull("asistenciaPreguntadaDia"))
+        }
+        db.close()
+    }
+
+    /** v1 (la primera publicada) de punta a punta hasta v4. */
+    @Test fun de1a4ConservaTodo() {
+        helper.createDatabase(NOMBRE, 1).use { sembrarV1(it) }
+        val db = helper.runMigrationsAndValidate(NOMBRE, 4, true, MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4)
+        verificarFilas(db, listOf("regaloPlan", "regaloReal", "fechaFestejoDia", "asistio", "asistenciaPreguntadaDia", "omitidoDia", "motivoOmitido", "motivoNoAsistio"))
+        db.close()
+    }
+
+    /** 3->4 a medio camino (una de las columnas ya esta) no revienta. */
+    @Test fun de3a4EsIdempotente() {
+        helper.createDatabase(NOMBRE, 3).use {
+            sembrarV1(it)
+            it.execSQL("ALTER TABLE `cumple` ADD COLUMN `omitidoDia` INTEGER")
+        }
+        helper.runMigrationsAndValidate(NOMBRE, 4, true, MIGRACION_3_4).close()
     }
 
     /** Una base que ya tiene una de las columnas (migracion a medio camino) no revienta. */

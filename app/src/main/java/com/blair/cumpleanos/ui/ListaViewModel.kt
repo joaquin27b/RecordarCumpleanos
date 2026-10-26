@@ -22,6 +22,7 @@ import com.blair.cumpleanos.repo.FechaSaludo
 import com.blair.cumpleanos.repo.Movida
 import com.blair.cumpleanos.repo.Repositorio
 import java.time.LocalDate
+import java.time.Year
 import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -100,9 +101,15 @@ class ListaViewModel(
 
     val personas: StateFlow<List<Persona>> = db.personaDao().activas().estado()
 
-    /** Cumpleaños del mes calendario, saludados o no: informativo, no pendientes. */
+    /** Cumpleaños del mes calendario con algo por hacer (ver pendientesEntre). 0 = sin cartel. */
     val cumplesDelMes: StateFlow<Int> = YearMonth.now().let { ym ->
-        db.cumpleDao().cantidadEntre(ym.atDay(1).toEpochDay().toInt(), ym.atEndOfMonth().toEpochDay().toInt())
+        db.cumpleDao().pendientesEntre(ym.atDay(1).toEpochDay().toInt(), ym.atEndOfMonth().toEpochDay().toInt(), hoy())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    }
+
+    /** Lo mismo para el año calendario: el cartel ESTE AÑO. */
+    val cumplesDelAnio: StateFlow<Int> = Year.now().let { y ->
+        db.cumpleDao().pendientesEntre(y.atDay(1).toEpochDay().toInt(), y.atMonth(12).atEndOfMonth().toEpochDay().toInt(), hoy())
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
     }
 
@@ -199,6 +206,14 @@ class ListaViewModel(
         lanzar { repo.saludar(personaId, cumpleId, hoy(), regaloReal) }
 
     fun anotarRegaloReal(cumpleId: Long, texto: String?) = lanzar { repo.anotarRegaloReal(cumpleId, texto) }
+
+    suspend fun cumpleUi(cumpleId: Long): CumpleUi? = db.cumpleDao().uiPorId(cumpleId)
+
+    fun omitir(personaId: Long, cumpleId: Long, motivo: String?) = lanzar { repo.omitir(personaId, cumpleId, hoy(), motivo) }
+
+    fun anotarMotivoOmitido(cumpleId: Long, texto: String?) = lanzar { repo.anotarMotivoOmitido(cumpleId, texto) }
+
+    fun anotarMotivoNoAsistio(cumpleId: Long, texto: String?) = lanzar { repo.anotarMotivoNoAsistio(cumpleId, texto) }
 
     fun anularSaludo(cumpleId: Long) = lanzar { repo.anularSaludo(cumpleId) }
 

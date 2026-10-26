@@ -43,6 +43,15 @@ fun avisaFestejo(fechaFestejoDia: Int?, fechaDia: Int, hoy: Int, ultimoAviso: In
     return fechaFestejoDia - hoy in 0..1
 }
 
+/**
+ * Pregunta del dia siguiente: "¿Saludaste a X ayer?". Una sola vez, el dia
+ * despues del cumple, si sigue sin saludar ni saltear (eso lo garantiza quien
+ * llama: solo pasa ocurrencias abiertas). Despues ya no: la tarjeta queda en la
+ * app, sin machacar por notificacion.
+ */
+fun preguntaSaludo(fechaDia: Int, hoy: Int, avisoUltimoDia: Int?): Boolean =
+    hoy - fechaDia == 1 && avisoUltimoDia != hoy
+
 /** Dia del mes en que se emite el resumen. */
 const val DIA_RESUMEN = 1
 

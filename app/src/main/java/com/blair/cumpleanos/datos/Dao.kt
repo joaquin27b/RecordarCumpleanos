@@ -30,6 +30,10 @@ data class CumpleUi(
     /** null = sin responder (todas las filas de la v2). */
     val asistio: Boolean?,
     val asistenciaPreguntadaDia: Int?,
+    /** null = no se salteo (todas las filas de la v3). */
+    val omitidoDia: Int?,
+    val motivoOmitido: String?,
+    val motivoNoAsistio: String?,
 )
 
 /** Un festejo a avisar: quien y cuando. */
@@ -70,11 +74,20 @@ interface CumpleDao {
     @Query("SELECT * FROM cumple WHERE id = :id")
     suspend fun porId(id: Long): Cumple?
 
+    /** Una ocurrencia lista para la UI: la abre un boton de notificacion. */
+    @Query(
+        """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
+                  c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal, c.fechaFestejoDia,
+                  c.asistio, c.asistenciaPreguntadaDia, c.omitidoDia, c.motivoOmitido, c.motivoNoAsistio
+           FROM cumple c JOIN persona p ON p.id = c.personaId WHERE c.id = :id"""
+    )
+    suspend fun uiPorId(id: Long): CumpleUi?
+
     /** PROXIMOS: todo lo no saludado de personas activas. */
     @Query(
         """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
                   c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal, c.fechaFestejoDia,
-                  c.asistio, c.asistenciaPreguntadaDia
+                  c.asistio, c.asistenciaPreguntadaDia, c.omitidoDia, c.motivoOmitido, c.motivoNoAsistio
            FROM cumple c JOIN persona p ON p.id = c.personaId
            WHERE c.saludado = 0 AND p.activo = 1
            ORDER BY c.fechaDia"""
@@ -85,7 +98,7 @@ interface CumpleDao {
     @Query(
         """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
                   c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal, c.fechaFestejoDia,
-                  c.asistio, c.asistenciaPreguntadaDia
+                  c.asistio, c.asistenciaPreguntadaDia, c.omitidoDia, c.motivoOmitido, c.motivoNoAsistio
            FROM cumple c JOIN persona p ON p.id = c.personaId
            WHERE c.saludado = 0 AND p.activo = 1
            ORDER BY c.fechaDia"""
@@ -96,7 +109,7 @@ interface CumpleDao {
     @Query(
         """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
                   c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal, c.fechaFestejoDia,
-                  c.asistio, c.asistenciaPreguntadaDia
+                  c.asistio, c.asistenciaPreguntadaDia, c.omitidoDia, c.motivoOmitido, c.motivoNoAsistio
            FROM cumple c JOIN persona p ON p.id = c.personaId
            WHERE c.saludadoDia IS NOT NULL AND c.saludadoDia BETWEEN :desde AND :hasta
            ORDER BY c.saludadoDia DESC"""
@@ -107,7 +120,7 @@ interface CumpleDao {
     @Query(
         """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
                   c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal, c.fechaFestejoDia,
-                  c.asistio, c.asistenciaPreguntadaDia
+                  c.asistio, c.asistenciaPreguntadaDia, c.omitidoDia, c.motivoOmitido, c.motivoNoAsistio
            FROM cumple c JOIN persona p ON p.id = c.personaId
            WHERE c.saludadoDia IS NOT NULL
            ORDER BY c.saludadoDia DESC"""
@@ -132,8 +145,21 @@ interface CumpleDao {
     @Query("SELECT id FROM cumple WHERE personaId = :personaId AND fechaDia = :dia AND id <> :excepto")
     suspend fun otroEnFecha(personaId: Long, dia: Int, excepto: Long): Long?
 
-    @Query("UPDATE cumple SET saludado = 1, anulado = 0, saludadoDia = :hoy WHERE id = :id")
+    @Query("UPDATE cumple SET saludado = 1, anulado = 0, saludadoDia = :hoy, omitidoDia = NULL WHERE id = :id")
     suspend fun marcarSaludado(id: Long, hoy: Int)
+
+    /** "No saludé": se cierra como un saludo, con el dia y el motivo del skip. */
+    @Query(
+        """UPDATE cumple SET saludado = 1, anulado = 0, saludadoDia = :hoy, omitidoDia = :hoy,
+           motivoOmitido = :motivo WHERE id = :id"""
+    )
+    suspend fun omitir(id: Long, hoy: Int, motivo: String?)
+
+    @Query("UPDATE cumple SET motivoOmitido = :texto WHERE id = :id")
+    suspend fun anotarMotivoOmitido(id: Long, texto: String?)
+
+    @Query("UPDATE cumple SET motivoNoAsistio = :texto WHERE id = :id")
+    suspend fun anotarMotivoNoAsistio(id: Long, texto: String?)
 
     /** Anular: vuelve a pendiente pero conserva saludadoDia para seguir en el historial. */
     @Query("UPDATE cumple SET saludado = 0, anulado = 1 WHERE id = :id")
@@ -142,7 +168,11 @@ interface CumpleDao {
     @Query("UPDATE cumple SET saludado = 1, anulado = 0, saludadoDia = :dia WHERE id = :id")
     suspend fun resaludar(id: Long, dia: Int)
 
-    @Query("UPDATE cumple SET saludadoDia = :dia WHERE id = :id")
+    /** Corrige el dia del saludo; si era un "No saludé", tambien el dia del skip. */
+    @Query(
+        """UPDATE cumple SET saludadoDia = :dia,
+           omitidoDia = CASE WHEN omitidoDia IS NULL THEN NULL ELSE :dia END WHERE id = :id"""
+    )
     suspend fun editarFechaSaludo(id: Long, dia: Int)
 
     /** Otro saludo de la misma persona en ese dia, si lo hay. */
@@ -150,7 +180,7 @@ interface CumpleDao {
     suspend fun otroSaludoEnDia(personaId: Long, dia: Int, excepto: Long): Long?
 
     /** El saludo vigente mas reciente de la persona: lo que va en Persona.ultimoSaludoDia. */
-    @Query("SELECT MAX(saludadoDia) FROM cumple WHERE personaId = :personaId AND saludado = 1")
+    @Query("SELECT MAX(saludadoDia) FROM cumple WHERE personaId = :personaId AND saludado = 1 AND omitidoDia IS NULL")
     suspend fun ultimoSaludoDe(personaId: Long): Int?
 
     @Query("UPDATE cumple SET fechaDia = :dia, avisoUltimoDia = NULL WHERE id = :id")
@@ -186,7 +216,7 @@ interface CumpleDao {
     @Query(
         """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
                   c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal, c.fechaFestejoDia,
-                  c.asistio, c.asistenciaPreguntadaDia
+                  c.asistio, c.asistenciaPreguntadaDia, c.omitidoDia, c.motivoOmitido, c.motivoNoAsistio
            FROM cumple c JOIN persona p ON p.id = c.personaId
            WHERE p.activo = 1 AND c.asistio IS NULL AND c.fechaFestejoDia BETWEEN :desde AND :hasta
            ORDER BY c.fechaFestejoDia DESC, c.id DESC"""
@@ -196,7 +226,7 @@ interface CumpleDao {
     @Query(
         """SELECT c.id, c.personaId, p.nombre, p.anioNacimiento, p.preavisos, c.fechaDia,
                   c.saludado, c.saludadoDia, c.anulado, c.avisoUltimoDia, c.regaloPlan, c.regaloReal, c.fechaFestejoDia,
-                  c.asistio, c.asistenciaPreguntadaDia
+                  c.asistio, c.asistenciaPreguntadaDia, c.omitidoDia, c.motivoOmitido, c.motivoNoAsistio
            FROM cumple c JOIN persona p ON p.id = c.personaId
            WHERE p.activo = 1 AND c.asistio IS NULL AND c.fechaFestejoDia BETWEEN :desde AND :hasta
            ORDER BY c.fechaFestejoDia DESC, c.id DESC"""
@@ -215,12 +245,20 @@ interface CumpleDao {
     )
     suspend fun festejosEntre(desde: Int, hasta: Int): List<FestejoUi>
 
-    /** Ocurrencias de personas activas en un rango, saludadas o no: el contador del mes. */
+    /**
+     * Ocurrencias de personas activas en un rango con algo por hacer: los
+     * contadores ESTE MES y ESTE AÑO. Cuenta mientras no se saludo, o mientras el
+     * festejo aparte todavia no paso (se haya ido o no). Saludada y sin festejo por
+     * delante, sale: con todo el mes saludado el cartel quedaba diciendo 1 (1.2.2).
+     * Un "No saludé" sale siempre, aunque tenga festejo por delante.
+     * Es un Flow de la tabla: saludar, editar fechas o mover el festejo lo recalcula.
+     */
     @Query(
         """SELECT COUNT(*) FROM cumple c JOIN persona p ON p.id = c.personaId
-           WHERE p.activo = 1 AND c.fechaDia BETWEEN :desde AND :hasta"""
+           WHERE p.activo = 1 AND c.fechaDia BETWEEN :desde AND :hasta
+             AND (c.saludado = 0 OR (c.omitidoDia IS NULL AND c.fechaFestejoDia IS NOT NULL AND c.fechaFestejoDia >= :hoy))"""
     )
-    fun cantidadEntre(desde: Int, hasta: Int): Flow<Int>
+    fun pendientesEntre(desde: Int, hasta: Int, hoy: Int): Flow<Int>
 
     @Query("UPDATE cumple SET avisoUltimoDia = :dia WHERE id = :id")
     suspend fun marcarAviso(id: Long, dia: Int)

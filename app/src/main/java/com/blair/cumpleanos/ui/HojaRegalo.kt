@@ -149,7 +149,7 @@ fun CampoFestejo(fecha: Int?, onCambio: (Int?) -> Unit, sugerida: Int) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CampoFechaSaludo(fecha: Int, onCambio: (Int) -> Unit, error: String?) {
+fun CampoFechaSaludo(fecha: Int, onCambio: (Int) -> Unit, error: String?, etiqueta: Int = R.string.saludo_fecha_etiqueta) {
     val loc = LocalConfiguration.current.locales[0]
     var abierto by rememberSaveable { mutableStateOf(false) }
     val forma = RoundedCornerShape(18.dp)
@@ -159,7 +159,7 @@ fun CampoFechaSaludo(fecha: Int, onCambio: (Int) -> Unit, error: String?) {
             Icon(Icons.Filled.DateRange, contentDescription = null, tint = CianNeon, modifier = Modifier.size(26.dp))
             Spacer(Modifier.width(10.dp))
             Text(
-                stringResource(R.string.saludo_fecha_etiqueta, fechaConDia(fecha, loc)),
+                stringResource(etiqueta, fechaConDia(fecha, loc)),
                 color = BlancoEscena,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier
@@ -213,10 +213,13 @@ fun CampoFechaSaludo(fecha: Int, onCambio: (Int) -> Unit, error: String?) {
 
 /** Campo del regalo con su icono. Vacio se guarda como NULL: "sin regalo anotado". */
 @Composable
-fun CampoRegalo(valor: String, onCambio: (String) -> Unit, etiqueta: String) {
+fun CampoRegalo(valor: String, onCambio: (String) -> Unit, etiqueta: String, conIcono: Boolean = true) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(painterResource(R.drawable.ic_regalo), contentDescription = null, tint = Dorado, modifier = Modifier.size(26.dp))
-        Spacer(Modifier.width(10.dp))
+        // Sin icono cuando el campo es un motivo y no un regalo.
+        if (conIcono) {
+            Icon(painterResource(R.drawable.ic_regalo), contentDescription = null, tint = Dorado, modifier = Modifier.size(26.dp))
+            Spacer(Modifier.width(10.dp))
+        }
         CampoTexto(
             valor = valor,
             onCambio = { onCambio(it.take(120)) },
@@ -253,7 +256,15 @@ fun HojaRegalo(
     onFechaCambiada: () -> Unit = {},
     /** Desde el historial: eliminar este saludo, con confirmacion. null = no se muestra. */
     onEliminar: (() -> Unit)? = null,
+    /** false cuando el campo es un motivo (No saludé, no fui) y no un regalo. */
+    conIconoRegalo: Boolean = true,
+    /** Rotulo del dia: "Saludado el…" o, en un No saludé, "No saludado el…". */
+    etiquetaFecha: Int = R.string.saludo_fecha_etiqueta,
+    /** Con "No fui" elegido: motivo opcional del festejo. null = no se muestra. */
+    motivoNoAsistioInicial: String? = null,
+    onMotivoNoAsistio: ((String?) -> Unit)? = null,
 ) {
+    var motivoNoAsistio by rememberSaveable { mutableStateOf(motivoNoAsistioInicial ?: "") }
     var confirmarEliminar by rememberSaveable { mutableStateOf(false) }
     var texto by rememberSaveable { mutableStateOf(inicial ?: "") }
     var asistio by rememberSaveable { mutableStateOf(asistioInicial) }
@@ -291,9 +302,9 @@ fun HojaRegalo(
                     Text(cuerpo, color = TextoSecundario, style = MaterialTheme.typography.bodyMedium)
                 }
                 fechaSaludo?.let { f ->
-                    CampoFechaSaludo(f, { fechaSaludo = it; onFechaCambiada() }, errorFecha)
+                    CampoFechaSaludo(f, { fechaSaludo = it; onFechaCambiada() }, errorFecha, etiquetaFecha)
                 }
-                CampoRegalo(texto, { texto = it }, etiqueta)
+                CampoRegalo(texto, { texto = it }, etiqueta, conIconoRegalo)
                 if (onAsistencia != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(painterResource(R.drawable.ic_festejo), contentDescription = null, tint = HazFucsia, modifier = Modifier.size(26.dp))
@@ -310,10 +321,17 @@ fun HojaRegalo(
                         ChipEleccion(stringResource(R.string.asistencia_chip_no), asistio == false, { asistio = if (asistio == false) null else false })
                     }
                 }
+                // "No fui": la excusa que dio, para acordarse. Opcional.
+                if (onMotivoNoAsistio != null && asistio == false) {
+                    CampoRegalo(motivoNoAsistio, { motivoNoAsistio = it }, stringResource(R.string.no_fui_motivo), conIcono = false)
+                }
                 BotonPrincipal(
                     textoBoton,
                     onClick = {
                         if (onAsistencia != null && asistio != asistioInicial) onAsistencia(asistio)
+                        if (onMotivoNoAsistio != null && asistio == false && motivoNoAsistio != (motivoNoAsistioInicial ?: "")) {
+                            onMotivoNoAsistio(motivoNoAsistio)
+                        }
                         onGuardar(texto, fechaSaludo)
                     },
                     modifier = Modifier.fillMaxWidth(),

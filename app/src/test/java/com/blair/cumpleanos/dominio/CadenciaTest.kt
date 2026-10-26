@@ -63,4 +63,15 @@ class CadenciaTest {
         // El default de los testers ("7,1" o null) no lo incluye: no cambia su cadencia.
         assertFalse(Cadencia.avisa(hoy + 3, hoy, null, null))
     }
+
+    @Test fun `al dia siguiente pregunta si saludo`() =
+        assertTrue(preguntaSaludo(hoy - 1, hoy, hoy - 1))
+
+    @Test fun `la pregunta sale una sola vez por dia`() =
+        assertFalse(preguntaSaludo(hoy - 1, hoy, hoy))
+
+    @Test fun `el mismo dia y dos dias despues no pregunta`() {
+        assertFalse(preguntaSaludo(hoy, hoy, null))
+        assertFalse(preguntaSaludo(hoy - 2, hoy, null))
+    }
 }

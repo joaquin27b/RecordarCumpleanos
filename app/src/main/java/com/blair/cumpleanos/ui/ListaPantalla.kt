@@ -60,7 +60,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
@@ -148,8 +151,10 @@ private fun locale(): Locale = LocalConfiguration.current.locales[0]
  */
 @Composable
 fun ListaPantalla(
-    /** Cumpleaños del mes calendario, saludados o no. 0 = sin pildora. */
+    /** Cumpleaños del mes calendario con algo por hacer. 0 = sin pildora. */
     cumplesDelMes: Int,
+    /** Lo mismo para el año calendario. 0 = sin pildora. */
+    cumplesDelAnio: Int,
     pasados: List<FilaCumple>,
     proximos: List<FilaLista>,
     personas: List<Persona>,
@@ -157,6 +162,8 @@ fun ListaPantalla(
     mes: YearMonth,
     porAnio: Boolean,
     onSaludar: (FilaCumple) -> Unit,
+    /** "No saludé": abre la hoja del motivo. */
+    onOmitir: (FilaCumple) -> Unit,
     onEditarRegalo: (CumpleUi) -> Unit,
     onEditarPersona: (Long) -> Unit,
     onEliminarPersona: (Long) -> Unit,
@@ -295,7 +302,7 @@ fun ListaPantalla(
         itemsIndexed(items, key = { _, it -> it.clave }) { i, item ->
             val anim = Modifier.entrada(item.clave, i, vistos, inicio)
             when (item) {
-                Item.Cabecera -> Cabecera(cumplesDelMes, loc, anim)
+                Item.Cabecera -> Cabecera(cumplesDelMes, cumplesDelAnio, loc, anim)
                 is Item.Asistencia -> TarjetaAsistencia(item.c, loc, onResponderAsistencia, anim)
                 // Sin animacion de entrada: un anuncio no arranca transparente ni corrido.
                 // Tapada por una hoja, invisible pero en su lugar: nada se corre.
@@ -321,15 +328,8 @@ fun ListaPantalla(
                         }
                     }
                 }
-                is Item.Grupo -> Text(
-                    stringResource(if (item.h.esteAnio) R.string.grupo_este_anio else R.string.grupo_proximo_anio)
-                        .uppercase(loc) + "  ·  " + item.h.anio,
-                    color = Dorado,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    modifier = anim.padding(top = 6.dp, start = 4.dp),
-                )
-                is Item.Cumple -> TarjetaCumple(item.f, loc, onSaludar, onEditarPersona, anim)
+                is Item.Grupo -> EncabezadoAnio(item.h.esteAnio, item.h.anio, loc, anim)
+                is Item.Cumple -> TarjetaCumple(item.f, loc, onSaludar, onOmitir, onEditarPersona, anim)
                 is Item.Personas -> TarjetaPersonas(item.lista, loc, onEditarPersona, { aBorrar = it }, anim)
                 Item.SelectorHistorial -> SelectorPeriodo(mes, porAnio, aniosHistorial, onElegirPeriodo, onAlternarPorAnio, anim)
                 is Item.Historial -> ListaHistorial(item.lista, loc, onEditarRegalo, anim)
@@ -496,7 +496,7 @@ private val DESBORDE_IZQUIERDA = 8.dp
  * sin el, la LazyColumn la corta contra su borde, bajo la barra de estado.
  */
 @Composable
-private fun Cabecera(cumplesDelMes: Int, loc: Locale, modifier: Modifier) {
+private fun Cabecera(cumplesDelMes: Int, cumplesDelAnio: Int, loc: Locale, modifier: Modifier) {
     Box(modifier.padding(top = 12.dp + DESBORDE_ARRIBA, bottom = 4.dp)) {
         Marquesina {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -521,10 +521,14 @@ private fun Cabecera(cumplesDelMes: Int, loc: Locale, modifier: Modifier) {
                             alineacion = Alignment.Start,
                             modifier = Modifier.padding(end = 8.dp),
                         )
-                        // Informativo: en 0 no se muestra, una pildora vacia es ruido.
-                        // El margen final la separa de las lamparitas del marco.
-                        if (cumplesDelMes > 0) {
-                            ContadorMes(cumplesDelMes, loc, Modifier.padding(end = 8.dp))
+                        // El margen final las separa de las lamparitas del marco.
+                        // Los dos siempre juntos, en 0 tambien: "nada pendiente" es un dato.
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(end = 8.dp),
+                        ) {
+                            Contador(R.string.contador_mes, cumplesDelMes, loc)
+                            Contador(R.string.contador_anio, cumplesDelAnio, loc)
                         }
                     }
                     Spacer(Modifier.height(2.dp))
@@ -546,11 +550,45 @@ private fun Cabecera(cumplesDelMes: Int, loc: Locale, modifier: Modifier) {
 }
 
 /**
- * "ESTE MES / 3" en dos lineas: sin el nombre del mes, que era lo que la
- * alargaba y la cortaba en pantallas angostas.
+ * Franja que separa ESTE AÑO de PROXIMO AÑO: el año grande, dorado para este y
+ * cian para el que viene. Con un rotulo chico se confundian los dos grupos.
  */
 @Composable
-private fun ContadorMes(cantidad: Int, loc: Locale, modifier: Modifier) {
+private fun EncabezadoAnio(esteAnio: Boolean, anio: Int, loc: Locale, modifier: Modifier) {
+    val color = if (esteAnio) Dorado else CianNeon
+    val forma = RoundedCornerShape(16.dp)
+    Row(
+        modifier
+            .padding(top = 10.dp)
+            .fillMaxWidth()
+            .clip(forma)
+            .background(color.copy(alpha = 0.14f))
+            .border(1.5.dp, color.copy(alpha = 0.7f), forma)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            anio.toString(),
+            color = color,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Black,
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            stringResource(if (esteAnio) R.string.grupo_este_anio else R.string.grupo_proximo_anio).uppercase(loc),
+            color = BlancoEscena,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.ExtraBold,
+        )
+    }
+}
+
+/**
+ * "ESTE MES / 3" o "ESTE AÑO / 7" en dos lineas: sin el nombre del mes, que era
+ * lo que la alargaba y la cortaba en pantallas angostas.
+ */
+@Composable
+private fun Contador(etiqueta: Int, cantidad: Int, loc: Locale, modifier: Modifier = Modifier) {
     Column(
         modifier
             .clip(RoundedCornerShape(14.dp))
@@ -559,7 +597,7 @@ private fun ContadorMes(cantidad: Int, loc: Locale, modifier: Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            stringResource(R.string.contador_mes).uppercase(loc),
+            stringResource(etiqueta).uppercase(loc),
             color = TintaSobreLuz,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.ExtraBold,
@@ -583,6 +621,7 @@ private fun TarjetaCumple(
     f: FilaCumple,
     loc: Locale,
     onSaludar: (FilaCumple) -> Unit,
+    onOmitir: (FilaCumple) -> Unit,
     onEditar: (Long) -> Unit,
     modifier: Modifier,
 ) {
@@ -622,8 +661,19 @@ private fun TarjetaCumple(
                     overflow = TextOverflow.Ellipsis,
                 )
                 val cuando = tiempo(f.c.fechaDia, f.c.fechaDia - f.diasRestantes)
-                val detalle = listOfNotNull(fechaLarga(f.c.fechaDia, loc), textoEdad(res, f.edad, cuando)).joinToString("  ·  ")
-                Text(detalle, color = TextoSecundario, style = MaterialTheme.typography.bodyMedium)
+                // La edad un poco mas destacada que la fecha: es lo que se busca al mirar.
+                val edadTexto = textoEdad(res, f.edad, cuando)
+                Text(
+                    buildAnnotatedString {
+                        append(fechaLarga(f.c.fechaDia, loc))
+                        edadTexto?.let {
+                            append("  ·  ")
+                            withStyle(SpanStyle(color = BlancoEscena, fontWeight = FontWeight.Bold)) { append(it) }
+                        }
+                    },
+                    color = TextoSecundario,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
                 LineaRegalo(
                     f.c.regaloPlan?.let { stringResource(R.string.regalo_plan, it) }
                         ?: stringResource(R.string.regalo_tocar),
@@ -647,6 +697,10 @@ private fun TarjetaCumple(
                 onClick = { onSaludar(f) },
                 modifier = Modifier.fillMaxWidth(),
             )
+            // Skip: no quiso, no se pudo. Sale de los pendientes y del contador.
+            TextButton(onClick = { onOmitir(f) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Text(stringResource(R.string.accion_no_salude), color = TextoSecundario, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
@@ -822,7 +876,10 @@ private fun TarjetaSaludo(c: CumpleUi, loc: Locale, onEditarRegalo: () -> Unit, 
                 )
                 c.saludadoDia?.let {
                     Text(
-                        res.getString(R.string.hist_saludado_el, fechaDiaMesAnio(it, loc)),
+                        res.getString(
+                            if (c.omitidoDia != null) R.string.hist_no_saludado_el else R.string.hist_saludado_el,
+                            fechaDiaMesAnio(it, loc),
+                        ),
                         color = TextoSecundario,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -830,18 +887,26 @@ private fun TarjetaSaludo(c: CumpleUi, loc: Locale, onEditarRegalo: () -> Unit, 
                 textoEdad(res, edad(c.fechaDia, c.anioNacimiento), cuando)?.let {
                     Text(it, color = TextoSecundario, style = MaterialTheme.typography.bodySmall)
                 }
-                // NULL de las filas de la v1: se dice, no se deja un hueco.
-                LineaRegalo(
-                    c.regaloReal?.let { stringResource(R.string.regalo_real, it) }
-                        ?: stringResource(R.string.regalo_sin_anotar),
-                    apagada = c.regaloReal == null,
-                )
+                // Un "No saludé" muestra su motivo en vez del regalo.
+                if (c.omitidoDia != null) {
+                    c.motivoOmitido?.let {
+                        Text(stringResource(R.string.hist_motivo, it), color = BlancoEscena, style = MaterialTheme.typography.bodySmall)
+                    }
+                } else {
+                    // NULL de las filas de la v1: se dice, no se deja un hueco.
+                    LineaRegalo(
+                        c.regaloReal?.let { stringResource(R.string.regalo_real, it) }
+                            ?: stringResource(R.string.regalo_sin_anotar),
+                        apagada = c.regaloReal == null,
+                    )
+                }
                 // Junto al regalo y solo si hubo festejo aparte (o ya se respondio).
                 if (c.fechaFestejoDia != null || c.asistio != null) {
                     LineaFestejo(
                         when (c.asistio) {
                             true -> stringResource(R.string.asistencia_fuiste)
-                            false -> stringResource(R.string.asistencia_no_fuiste)
+                            false -> c.motivoNoAsistio?.let { stringResource(R.string.asistencia_no_fuiste_motivo, it) }
+                                ?: stringResource(R.string.asistencia_no_fuiste)
                             null -> stringResource(R.string.asistencia_sin_responder)
                         },
                         apagada = c.asistio == null,

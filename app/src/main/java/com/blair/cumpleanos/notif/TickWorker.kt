@@ -15,6 +15,7 @@ import com.blair.cumpleanos.dominio.avisaResumen
 import com.blair.cumpleanos.dominio.edad
 import com.blair.cumpleanos.dominio.mesDe
 import com.blair.cumpleanos.dominio.notificaAsistencia
+import com.blair.cumpleanos.dominio.preguntaSaludo
 import com.blair.cumpleanos.dominio.ventanaAsistencia
 import com.blair.cumpleanos.ui.nombreMesSolo
 import java.time.Duration
@@ -89,6 +90,10 @@ suspend fun correrTick(applicationContext: Context) {
                 applicationContext, c.personaId, c.nombre, c.fechaDia, c.fechaDia - hoy,
                 edad(c.fechaDia, c.anioNacimiento), mudo,
             )
+            dao.marcarAviso(c.id, hoy)
+        } else if (preguntaSaludo(c.fechaDia, hoy, c.avisoUltimoDia)) {
+            // Al dia siguiente, si sigue abierta: "¿Saludaste a X ayer?".
+            Emisor.preguntaSaludo(applicationContext, c.personaId, c.id, c.nombre, mudo)
             dao.marcarAviso(c.id, hoy)
         }
     }

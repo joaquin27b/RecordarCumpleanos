@@ -26,6 +26,19 @@ private const val BASE_ID_ASISTENCIA = 3 shl 29
 /** cumpleId de la pregunta de asistencia que abre la app al tocar la notificacion. */
 const val EXTRA_ASISTENCIA = "asistencia"
 
+/** Boton de una notificacion: que hacer al abrir la app, y sobre que ocurrencia. */
+const val EXTRA_ACCION = "accion"
+const val EXTRA_CUMPLE = "cumpleId"
+const val EXTRA_NOTIF = "notifId"
+
+/** Botones de las notificaciones del dia siguiente. */
+object Accion {
+    const val YA_SALUDE = "ya_salude"
+    const val NO_SALUDE = "no_salude"
+    const val FUI = "fui"
+    const val NO_FUI = "no_fui"
+}
+
 object Emisor {
 
     /**
@@ -55,12 +68,38 @@ object Emisor {
         emitir(ctx, BASE_ID_FESTEJO + personaId.toInt(), CANAL_CUMPLE, nombre, texto, NotificationCompat.PRIORITY_HIGH, mudo)
     }
 
-    /** "¿Fuiste al festejo de Patry?". Tocarla abre la app con la tarjeta arriba. */
+    /**
+     * "¿Fuiste al festejo de Patry?". Tocarla abre la app con la tarjeta arriba;
+     * FUI y NO FUI responden desde la notificacion (NO FUI abre la excusa).
+     */
     fun asistencia(ctx: Context, personaId: Long, cumpleId: Long, nombre: String, mudo: Boolean = false) {
+        val id = BASE_ID_ASISTENCIA + personaId.toInt()
         emitir(
-            ctx, BASE_ID_ASISTENCIA + personaId.toInt(), CANAL_CUMPLE, nombre,
+            ctx, id, CANAL_CUMPLE, nombre,
             ctx.getString(R.string.asistencia_pregunta, nombre), NotificationCompat.PRIORITY_HIGH, mudo,
+            acciones = listOf(
+                Accion.FUI to ctx.getString(R.string.notif_accion_fui),
+                Accion.NO_FUI to ctx.getString(R.string.notif_accion_no_fui),
+            ),
+            cumpleId = cumpleId,
         ) { putExtra(EXTRA_ASISTENCIA, cumpleId) }
+    }
+
+    /**
+     * "¿Saludaste a Patry ayer?", el dia despues del cumple si sigue sin marcar.
+     * Mismo id que el aviso del cumple: lo reemplaza. YA SALUDÉ y NO SALUDÉ abren
+     * la app en la hoja que corresponde (la del regalo o la de la excusa).
+     */
+    fun preguntaSaludo(ctx: Context, personaId: Long, cumpleId: Long, nombre: String, mudo: Boolean = false) {
+        emitir(
+            ctx, personaId.toInt(), CANAL_CUMPLE, nombre,
+            ctx.getString(R.string.notif_pregunta_saludo, nombre), NotificationCompat.PRIORITY_HIGH, mudo,
+            acciones = listOf(
+                Accion.YA_SALUDE to ctx.getString(R.string.notif_accion_ya_salude),
+                Accion.NO_SALUDE to ctx.getString(R.string.notif_accion_no_salude),
+            ),
+            cumpleId = cumpleId,
+        )
     }
 
     fun resumen(ctx: Context, titulo: String, cuerpo: String) {
@@ -70,6 +109,8 @@ object Emisor {
     private fun emitir(
         ctx: Context, id: Int, canal: String, titulo: String, texto: String, prioridad: Int,
         mudo: Boolean = false,
+        acciones: List<Pair<String, String>> = emptyList(),
+        cumpleId: Long = 0,
         extras: Intent.() -> Unit = {},
     ) {
         val abrir = PendingIntent.getActivity(
@@ -80,7 +121,7 @@ object Emisor {
                 .apply(extras),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val n = NotificationCompat.Builder(ctx, canal)
+        val b = NotificationCompat.Builder(ctx, canal)
             .setSmallIcon(android.R.drawable.ic_menu_my_calendar)
             .setContentTitle(titulo)
             .setContentText(texto)
@@ -92,7 +133,21 @@ object Emisor {
             .setSilent(mudo)
             // Un nombre y una fecha: se puede leer con el telefono bloqueado.
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .build()
+        acciones.forEachIndexed { i, (accion, texto) ->
+            val pi = PendingIntent.getActivity(
+                ctx,
+                // Un request code por boton: con el mismo, FLAG_UPDATE_CURRENT pisaria los extras.
+                id * 4 + i + 1,
+                Intent(ctx, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    .putExtra(EXTRA_ACCION, accion)
+                    .putExtra(EXTRA_CUMPLE, cumpleId)
+                    .putExtra(EXTRA_NOTIF, id),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            b.addAction(0, texto, pi)
+        }
+        val n = b.build()
         try {
             NotificationManagerCompat.from(ctx).notify(id, n)
         } catch (e: SecurityException) {

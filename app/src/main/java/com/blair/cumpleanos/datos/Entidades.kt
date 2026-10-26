@@ -64,4 +64,12 @@ data class Cumple(
     /** epochDay en que se mostro la pregunta de asistencia. Distingue "no pregunte
      *  todavia" de "pregunte y no contesto": sin esto se repregunta a diario. */
     val asistenciaPreguntadaDia: Int? = null,
+    /** epochDay en que se marco "No saludé" (skip). null = no se salteo. Un salteado
+     *  se cierra como un saludo (saludado = 1, saludadoDia = este dia): sale de los
+     *  contadores y de los avisos, y queda en el historial como "No saludado". */
+    val omitidoDia: Int? = null,
+    /** Por que no se saludo, opcional. */
+    val motivoOmitido: String? = null,
+    /** Por que no fue al festejo, opcional: la excusa que dio, para acordarse. */
+    val motivoNoAsistio: String? = null,
 )

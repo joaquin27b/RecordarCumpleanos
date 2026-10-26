@@ -45,3 +45,19 @@ val MIGRACION_2_3: Migration = object : Migration(2, 3) {
         if ("asistenciaPreguntadaDia" !in existentes) db.execSQL("ALTER TABLE `cumple` ADD COLUMN `asistenciaPreguntadaDia` INTEGER")
     }
 }
+
+/**
+ * v3 -> v4 (1.2.x -> 1.3.0): "No saludé" con motivo, y motivo de no ir al festejo.
+ *
+ * Mismas reglas: solo ADD COLUMN, nullable y sin DEFAULT. Las filas existentes
+ * quedan en NULL: "no se salteo", "sin motivo". Chequeo de PRAGMA antes de cada
+ * ALTER: reintentarla no tira "duplicate column".
+ */
+val MIGRACION_3_4: Migration = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        val existentes = columnas(db, "cumple")
+        if ("omitidoDia" !in existentes) db.execSQL("ALTER TABLE `cumple` ADD COLUMN `omitidoDia` INTEGER")
+        if ("motivoOmitido" !in existentes) db.execSQL("ALTER TABLE `cumple` ADD COLUMN `motivoOmitido` TEXT")
+        if ("motivoNoAsistio" !in existentes) db.execSQL("ALTER TABLE `cumple` ADD COLUMN `motivoNoAsistio` TEXT")
+    }
+}

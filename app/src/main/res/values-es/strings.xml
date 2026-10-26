@@ -141,6 +141,7 @@
         <item quantity="other">Festejo en %d días</item>
     </plurals>
     <string name="contador_mes">Este mes</string>
+    <string name="contador_anio">Este año</string>
     <string name="hist_buscar">Buscar por nombre</string>
     <string name="per_buscar">Buscar persona</string>
     <string name="hist_buscando_todo">Buscando en todo el historial</string>
@@ -175,4 +176,24 @@
     <string name="hist_eliminar_saludo">Eliminar este saludo</string>
     <string name="hist_eliminar_saludo_titulo">¿Eliminar este saludo?</string>
     <string name="hist_eliminar_saludo_cuerpo">Se borra del historial. El cumpleaños no vuelve a quedar como no saludado.</string>
+
+    <!-- No saludé y motivo del festejo -->
+    <string name="accion_no_salude">No saludé</string>
+    <string name="omitir_titulo">No saludaste a %1$s</string>
+    <string name="omitir_cuerpo">Sale de los pendientes y del contador. Si querés, anotá por qué.</string>
+    <string name="omitir_motivo">¿Por qué no saludaste? (opcional)</string>
+    <string name="hist_no_saludado_el">No saludado: %1$s</string>
+    <string name="hist_motivo">Motivo: %1$s</string>
+    <string name="saludo_fecha_etiqueta_omitido">No saludado el %1$s</string>
+    <string name="no_fui_titulo">¿Por qué no fuiste al festejo de %1$s?</string>
+    <string name="no_fui_cuerpo">Anotalo para acordarte. Es opcional.</string>
+    <string name="no_fui_motivo">¿Por qué no fuiste? (opcional)</string>
+    <string name="asistencia_no_fuiste_motivo">No fuiste: %1$s</string>
+
+    <!-- Notificaciones del dia siguiente, con botones -->
+    <string name="notif_pregunta_saludo">¿Saludaste a %1$s ayer?</string>
+    <string name="notif_accion_ya_salude">Ya saludé</string>
+    <string name="notif_accion_no_salude">No saludé</string>
+    <string name="notif_accion_fui">Fui</string>
+    <string name="notif_accion_no_fui">No fui</string>
 </resources>

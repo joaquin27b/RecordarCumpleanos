@@ -145,6 +145,7 @@
         <item quantity="other">Party in %d days</item>
     </plurals>
     <string name="contador_mes">This month</string>
+    <string name="contador_anio">This year</string>
     <string name="hist_buscar">Search by name</string>
     <string name="per_buscar">Search people</string>
     <string name="hist_buscando_todo">Searching the whole history</string>
@@ -179,4 +180,24 @@
     <string name="hist_eliminar_saludo">Delete this greeting</string>
     <string name="hist_eliminar_saludo_titulo">Delete this greeting?</string>
     <string name="hist_eliminar_saludo_cuerpo">It\'s removed from the history. The birthday doesn\'t go back to not greeted.</string>
+
+    <!-- No saludé y motivo del festejo -->
+    <string name="accion_no_salude">Didn\'t greet</string>
+    <string name="omitir_titulo">You didn\'t greet %1$s</string>
+    <string name="omitir_cuerpo">It leaves your pending list and the counter. Note why, if you want.</string>
+    <string name="omitir_motivo">Why didn\'t you? (optional)</string>
+    <string name="hist_no_saludado_el">Not greeted: %1$s</string>
+    <string name="hist_motivo">Reason: %1$s</string>
+    <string name="saludo_fecha_etiqueta_omitido">Not greeted on %1$s</string>
+    <string name="no_fui_titulo">Why didn\'t you go to %1$s\'s party?</string>
+    <string name="no_fui_cuerpo">Write it down to remember. Optional.</string>
+    <string name="no_fui_motivo">Why didn\'t you go? (optional)</string>
+    <string name="asistencia_no_fuiste_motivo">You didn\'t go: %1$s</string>
+
+    <!-- Notificaciones del dia siguiente, con botones -->
+    <string name="notif_pregunta_saludo">Did you greet %1$s yesterday?</string>
+    <string name="notif_accion_ya_salude">I did</string>
+    <string name="notif_accion_no_salude">I didn\'t</string>
+    <string name="notif_accion_fui">I went</string>
+    <string name="notif_accion_no_fui">I didn\'t go</string>
 </resources>

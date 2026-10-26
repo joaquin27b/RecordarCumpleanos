@@ -97,6 +97,22 @@ class Repositorio(private val db: BaseDatos) {
         }
     }
 
+    /**
+     * "No saludé" (skip): la persona no quiso, no se pudo... Se cierra como un
+     * saludo, sin tocar el ultimo saludo de la persona, y nace la ocurrencia del
+     * año que viene. Sale de los contadores y de los avisos.
+     */
+    suspend fun omitir(personaId: Long, cumpleId: Long, hoy: Int, motivo: String?) {
+        db.withTransaction {
+            cumples.omitir(cumpleId, hoy, regalo(motivo))
+            asegurarCobertura(personaId, hoy)
+        }
+    }
+
+    suspend fun anotarMotivoOmitido(cumpleId: Long, texto: String?) = cumples.anotarMotivoOmitido(cumpleId, regalo(texto))
+
+    suspend fun anotarMotivoNoAsistio(cumpleId: Long, texto: String?) = cumples.anotarMotivoNoAsistio(cumpleId, regalo(texto))
+
     /** Editable en cualquier momento, desde el historial. */
     suspend fun anotarRegaloReal(cumpleId: Long, texto: String?) = cumples.anotarRegaloReal(cumpleId, regalo(texto))
 

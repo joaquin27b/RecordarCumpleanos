@@ -51,7 +51,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.blair.cumpleanos.datos.CumpleUi
+import com.blair.cumpleanos.notif.Accion
+import com.blair.cumpleanos.notif.EXTRA_ACCION
 import com.blair.cumpleanos.notif.EXTRA_ASISTENCIA
+import com.blair.cumpleanos.notif.EXTRA_CUMPLE
+import com.blair.cumpleanos.notif.EXTRA_NOTIF
+import com.blair.cumpleanos.ui.FilaLista
+import androidx.compose.runtime.snapshotFlow
+import androidx.core.app.NotificationManagerCompat
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import com.blair.cumpleanos.notif.ACCION_MADRUGADA
 import com.blair.cumpleanos.notif.Madrugada
 import com.blair.cumpleanos.notif.TickWorker
@@ -94,6 +104,19 @@ class MainActivity : ComponentActivity() {
     /** cumpleId de la notificacion de asistencia tocada, con el momento: tocarla dos veces vuelve a subir. */
     private var asistenciaPedida by mutableStateOf<Pair<Long, Long>?>(null)
 
+    /** Boton tocado en una notificacion: (accion, cumpleId, momento). */
+    private var accionPedida by mutableStateOf<Triple<String, Long, Long>?>(null)
+
+    /** Se consume y se borra, como la asistencia; la notificacion se cierra. */
+    private fun leerAccion(i: Intent?) {
+        val accion = i?.getStringExtra(EXTRA_ACCION) ?: return
+        val cumpleId = i.getLongExtra(EXTRA_CUMPLE, -1L)
+        val notif = i.getIntExtra(EXTRA_NOTIF, 0)
+        i.removeExtra(EXTRA_ACCION)
+        if (notif != 0) NotificationManagerCompat.from(this).cancel(notif)
+        if (cumpleId > 0) accionPedida = Triple(accion, cumpleId, System.nanoTime())
+    }
+
     /** Se consume y se borra: al rotar, el intent viejo no la vuelve a pedir. */
     private fun leerAsistencia(i: Intent?) {
         val id = i?.getLongExtra(EXTRA_ASISTENCIA, -1L) ?: return
@@ -105,6 +128,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         leerAsistencia(intent)
+        leerAccion(intent)
     }
 
     /** Cuando se lanzo el pedido de notificaciones: ver notificacionesBloqueadas. */
@@ -197,6 +221,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         leerAsistencia(intent)
+        leerAccion(intent)
         // Solo debug: cmd jobscheduler run -f no saltea el initialDelay de WorkManager.
         // adb shell am start -n com.blair.cumpleanos/.MainActivity --ez tick true
         if (BuildConfig.DEBUG && intent?.getBooleanExtra("tick", false) == true) {
@@ -292,6 +317,7 @@ class MainActivity : ComponentActivity() {
         val conHistorial by vm.conHistorial.collectAsStateWithLifecycle()
         val pendientesDePersona by vm.pendientesDePersona.collectAsStateWithLifecycle()
         val cumplesDelMes by vm.cumplesDelMes.collectAsStateWithLifecycle()
+        val cumplesDelAnio by vm.cumplesDelAnio.collectAsStateWithLifecycle()
         val asistencia by vm.asistencia.collectAsStateWithLifecycle()
         val pedida = asistenciaPedida
         LaunchedEffect(pedida) { pedida?.let { vm.pedirAsistencia(it.first) } }
@@ -299,6 +325,31 @@ class MainActivity : ComponentActivity() {
         // guarda recien al confirmar.
         var aSaludar by remember { mutableStateOf<FilaCumple?>(null) }
         var regaloHistorial by remember { mutableStateOf<CumpleUi?>(null) }
+        // "No saludé" de una tarjeta, y el motivo de no ir al festejo tras tocar NO FUI.
+        var aOmitir by remember { mutableStateOf<FilaCumple?>(null) }
+        var motivoFestejo by remember { mutableStateOf<CumpleUi?>(null) }
+        // Botones de las notificaciones del dia siguiente.
+        val accion = accionPedida
+        LaunchedEffect(accion) {
+            val (que, cumpleId, _) = accion ?: return@LaunchedEffect
+            accionPedida = null
+            // La lista llega por Flow: se espera a que la ocurrencia este cargada.
+            suspend fun fila() = withTimeoutOrNull(5_000) {
+                snapshotFlow {
+                    pasados.find { it.c.id == cumpleId }
+                        ?: proximos.filterIsInstance<FilaLista.Dato>().map { it.fila }.find { it.c.id == cumpleId }
+                }.filterNotNull().first()
+            }
+            when (que) {
+                Accion.YA_SALUDE -> fila()?.let { aSaludar = it }
+                Accion.NO_SALUDE -> fila()?.let { aOmitir = it }
+                Accion.FUI -> vm.responderAsistencia(cumpleId, true)
+                Accion.NO_FUI -> {
+                    vm.responderAsistencia(cumpleId, false)
+                    motivoFestejo = vm.cumpleUi(cumpleId)
+                }
+            }
+        }
         var errorFecha by remember { mutableStateOf<FechaSaludo?>(null) }
         LaunchedEffect(regaloHistorial?.id) { errorFecha = null }
         // FUERA del if (enAlta) y de la LazyColumn: con el alta abierta la lista sale
@@ -369,6 +420,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 ListaPantalla(
                     cumplesDelMes = cumplesDelMes,
+                    cumplesDelAnio = cumplesDelAnio,
                     pasados = pasados,
                     proximos = proximos,
                     personas = personas,
@@ -376,6 +428,7 @@ class MainActivity : ComponentActivity() {
                     mes = mes,
                     porAnio = porAnio,
                     onSaludar = { f -> aSaludar = f },
+                    onOmitir = { f -> aOmitir = f },
                     onEditarRegalo = { c -> regaloHistorial = c },
                     onEditarPersona = { id -> vm.abrirPersona(id) },
                     onEliminarPersona = { id -> vm.eliminarPersona(id) },
@@ -388,7 +441,11 @@ class MainActivity : ComponentActivity() {
                     busqueda = busqueda,
                     onBuscar = vm::buscar,
                     asistencia = asistencia,
-                    onResponderAsistencia = vm::responderAsistencia,
+                    onResponderAsistencia = { id, fue ->
+                        vm.responderAsistencia(id, fue)
+                        // NO FUI: se ofrece anotar por que, para acordarse.
+                        if (!fue) motivoFestejo = asistencia?.takeIf { it.id == id }
+                    },
                     onAsistenciaMostrada = vm::asistenciaMostrada,
                     irArriba = pedida,
                     nativos = nativosLista,
@@ -413,6 +470,38 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        aOmitir?.let { f ->
+            HojaRegalo(
+                titulo = stringResource(R.string.omitir_titulo, f.c.nombre),
+                cuerpo = stringResource(R.string.omitir_cuerpo),
+                etiqueta = stringResource(R.string.omitir_motivo),
+                inicial = null,
+                textoBoton = stringResource(R.string.accion_guardar),
+                conIconoRegalo = false,
+                onGuardar = { motivo, _ ->
+                    aOmitir = null
+                    vm.omitir(f.c.personaId, f.c.id, motivo)
+                },
+                onCerrar = { aOmitir = null },
+            )
+        }
+
+        motivoFestejo?.let { c ->
+            HojaRegalo(
+                titulo = stringResource(R.string.no_fui_titulo, c.nombre),
+                cuerpo = stringResource(R.string.no_fui_cuerpo),
+                etiqueta = stringResource(R.string.no_fui_motivo),
+                inicial = c.motivoNoAsistio,
+                textoBoton = stringResource(R.string.accion_guardar),
+                conIconoRegalo = false,
+                onGuardar = { motivo, _ ->
+                    vm.anotarMotivoNoAsistio(c.id, motivo)
+                    motivoFestejo = null
+                },
+                onCerrar = { motivoFestejo = null },
+            )
+        }
+
         aSaludar?.let { f ->
             HojaRegalo(
                 titulo = stringResource(R.string.saludo_titulo, f.c.nombre),
@@ -429,14 +518,20 @@ class MainActivity : ComponentActivity() {
         }
 
         regaloHistorial?.let { c ->
+            // Un "No saludé" se edita igual, pero el campo es su motivo y no un regalo.
+            val omitido = c.omitidoDia != null
             HojaRegalo(
-                titulo = stringResource(R.string.regalo_editar_titulo, c.nombre),
-                cuerpo = c.regaloPlan?.let { stringResource(R.string.regalo_plan_era, it) },
-                etiqueta = stringResource(R.string.regalo_real_etiqueta),
-                inicial = c.regaloReal,
+                titulo = if (omitido) stringResource(R.string.omitir_titulo, c.nombre) else stringResource(R.string.regalo_editar_titulo, c.nombre),
+                cuerpo = if (omitido) null else c.regaloPlan?.let { stringResource(R.string.regalo_plan_era, it) },
+                etiqueta = stringResource(if (omitido) R.string.omitir_motivo else R.string.regalo_real_etiqueta),
+                inicial = if (omitido) c.motivoOmitido else c.regaloReal,
                 textoBoton = stringResource(R.string.accion_guardar),
+                conIconoRegalo = !omitido,
+                etiquetaFecha = if (omitido) R.string.saludo_fecha_etiqueta_omitido else R.string.saludo_fecha_etiqueta,
+                motivoNoAsistioInicial = c.motivoNoAsistio,
+                onMotivoNoAsistio = { vm.anotarMotivoNoAsistio(c.id, it) },
                 onGuardar = { regalo, dia ->
-                    vm.anotarRegaloReal(c.id, regalo)
+                    if (omitido) vm.anotarMotivoOmitido(c.id, regalo) else vm.anotarRegaloReal(c.id, regalo)
                     if (dia == null || dia == c.saludadoDia) {
                         regaloHistorial = null
                     } else {
