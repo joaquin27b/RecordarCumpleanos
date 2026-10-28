@@ -77,8 +77,9 @@ por encima del MAYOR de esta tabla y agregar la fila nueva.
 | 6 | 1.2.1 | v3 | ver git log | AAB generado 2026-10-20, sin subir (nativos mini en alta y entre secciones; buscador de personas; línea bajo los títulos; imePadding del alta; halo del FAB fuera del banner) |
 | 7 | 1.2.2 | v3 | ver git log | AAB generado 2026-10-21 (nativos: media topeado y apaisado, compacto de alto fijo, regla de densidad, no se recargan al girar) |
 | 8 | 1.3.0 | v4 | ver git log | AAB generado 2026-10-26 (marca en todos los idiomas; Velita con globo sin cumpleaños; contadores ESTE MES / ESTE AÑO; No saludé y excusa del festejo (schema v4, MigracionTest OK 11/11); editar fecha y eliminar un saludo; avisos 00:05 y del día siguiente con botones; nativos mini en ventanas y mediano al final; sin permiso de batería) |
+| 9 | 1.3.1 | v4 | sin commitear | AAB generado 2026-10-28 (fix: blindaje de bordes del nativo en la hoja de alta — `clipToOutline` + `ViewOutlineProvider` concéntrico en `VistaNativo`, para que una creatividad real a pantalla completa no pise el borde redondeado. Sin cambios de schema. Verificado con creatividad real en el teléfono: sin regresión; el caso de video no se pudo forzar) |
 
-**Próxima tanda: versionCode 9.** Mientras la solicitud de Producción está en
+**Próxima tanda: versionCode 10.** Mientras la solicitud de Producción está en
 revisión **no se sube nada al track de closed testing** (un release nuevo puede
 reiniciar o complicar la evaluación): lo que se termine queda commiteado y
 pusheado a git, sin AAB subido.

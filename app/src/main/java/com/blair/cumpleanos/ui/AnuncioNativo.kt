@@ -2,6 +2,7 @@ package com.blair.cumpleanos.ui
 
 import android.app.Application
 import android.content.Context
+import android.graphics.Outline
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.text.TextUtils
@@ -9,6 +10,7 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.view.ViewOutlineProvider
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.FrameLayout
@@ -357,7 +359,13 @@ fun TarjetaNativo(anuncio: NativeAd, tamano: TamanoNativo, modifier: Modifier = 
         return
     }
     AndroidView(
-        factory = { c -> VistaNativo(c, if (tamano == TamanoNativo.MEDIANO) ALTO_MAX_MEDIA_MEDIANO_DP else ALTO_MAX_MEDIA_DP) },
+        factory = { c ->
+            VistaNativo(
+                c,
+                if (tamano == TamanoNativo.MEDIANO) ALTO_MAX_MEDIA_MEDIANO_DP else ALTO_MAX_MEDIA_DP,
+                radioClipDp = 16 - AIRE_ASSETS_DP,
+            )
+        },
         update = { it.mostrar(anuncio, colores, etiqueta) },
         // Libera la VISTA; el NativeAd lo destruye el coordinador.
         onRelease = { it.raiz.destroy() },
@@ -386,8 +394,20 @@ internal class CajaAspecto(ctx: Context, private val altoMaxDp: Int) : FrameLayo
     }
 }
 
-/** La NativeAdView armada en codigo, sin layout XML. Adaptada de Por Vencer. */
-internal class VistaNativo(ctx: Context, altoMaxMedia: Int) : LinearLayout(ctx) {
+/**
+ * La NativeAdView armada en codigo, sin layout XML. Adaptada de Por Vencer.
+ *
+ * [radioClipDp]: radio con el que la vista se recorta a si misma, en dp. Compose
+ * .clip(forma) NO redondea una View dentro de un AndroidView: la View dibuja en
+ * su propia capa rectangular. Con los IDs de test el media viene chico y centrado
+ * (FIT_CENTER) y no se nota, pero una creatividad real con media a pantalla
+ * completa pintaba esquinas cuadradas por encima del borde redondeado de la
+ * tarjeta. Con clipToOutline + este outline la vista respeta la forma. El radio
+ * es el inset de la tarjeta (el padding de afuera): asi el arco de la vista queda
+ * CONCENTRICO con el del borde, a esa distancia adentro. Solo el completo/mediano
+ * lleva media; el compacto/mini no desbordan y no clipean.
+ */
+internal class VistaNativo(ctx: Context, altoMaxMedia: Int, radioClipDp: Int) : LinearLayout(ctx) {
     private fun dp(v: Int) = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics,
     ).toInt()
@@ -403,6 +423,13 @@ internal class VistaNativo(ctx: Context, altoMaxMedia: Int) : LinearLayout(ctx) 
     private val accion = TextView(ctx)
 
     init {
+        outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, dp(radioClipDp).toFloat())
+            }
+        }
+        clipToOutline = true
+
         val contenido = LinearLayout(ctx).apply {
             orientation = VERTICAL
             setPadding(dp(AIRE_ASSETS_DP), dp(AIRE_ASSETS_DP), dp(AIRE_ASSETS_DP), dp(AIRE_ASSETS_DP))
